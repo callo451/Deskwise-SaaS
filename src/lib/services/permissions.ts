@@ -273,8 +273,9 @@ export class PermissionService {
       updatedAt: now,
     })
 
-    // Tickets
+    // Unified Tickets (includes Tickets, Incidents, Changes, Service Requests, Problems)
     permissions.push(
+      // Basic ticket permissions
       createPerm('tickets', 'view', 'View tickets', 'own'),
       createPerm('tickets', 'view', 'View all tickets', 'all'),
       createPerm('tickets', 'create', 'Create tickets'),
@@ -284,27 +285,22 @@ export class PermissionService {
       createPerm('tickets', 'assign', 'Assign tickets to users'),
       createPerm('tickets', 'close', 'Close tickets'),
       createPerm('tickets', 'reopen', 'Reopen closed tickets'),
-      createPerm('tickets', 'comment', 'Add comments to tickets')
-    )
+      createPerm('tickets', 'comment', 'Add comments to tickets'),
 
-    // Incidents
-    permissions.push(
-      createPerm('incidents', 'view', 'View incidents'),
-      createPerm('incidents', 'create', 'Create incidents'),
-      createPerm('incidents', 'edit', 'Edit incidents'),
-      createPerm('incidents', 'delete', 'Delete incidents'),
-      createPerm('incidents', 'manage', 'Manage incident status and updates'),
-      createPerm('incidents', 'publish', 'Publish public incident updates')
-    )
+      // Type-specific permissions (ITIL compliance)
+      createPerm('tickets', 'createIncident', 'Create incident tickets'),
+      createPerm('tickets', 'manageIncident', 'Manage incident status and updates'),
+      createPerm('tickets', 'publishIncident', 'Publish public incident status updates'),
 
-    // Change Requests
-    permissions.push(
-      createPerm('changes', 'view', 'View change requests'),
-      createPerm('changes', 'create', 'Create change requests'),
-      createPerm('changes', 'edit', 'Edit change requests'),
-      createPerm('changes', 'delete', 'Delete change requests'),
-      createPerm('changes', 'approve', 'Approve change requests'),
-      createPerm('changes', 'implement', 'Implement approved changes')
+      createPerm('tickets', 'createChange', 'Create change request tickets'),
+      createPerm('tickets', 'approveChange', 'Approve change requests'),
+      createPerm('tickets', 'implementChange', 'Implement approved changes'),
+
+      createPerm('tickets', 'createServiceRequest', 'Create service request tickets'),
+      createPerm('tickets', 'approveServiceRequest', 'Approve service requests'),
+
+      createPerm('tickets', 'createProblem', 'Create problem tickets'),
+      createPerm('tickets', 'manageProblem', 'Manage problem records and KEDB')
     )
 
     // Assets
@@ -420,18 +416,16 @@ export class PermissionService {
         'tickets.close',
         'tickets.reopen',
         'tickets.comment',
-        'incidents.view',
-        'incidents.create',
-        'incidents.edit',
-        'incidents.delete',
-        'incidents.manage',
-        'incidents.publish',
-        'changes.view',
-        'changes.create',
-        'changes.edit',
-        'changes.delete',
-        'changes.approve',
-        'changes.implement',
+        'tickets.createIncident',
+        'tickets.manageIncident',
+        'tickets.publishIncident',
+        'tickets.createChange',
+        'tickets.approveChange',
+        'tickets.implementChange',
+        'tickets.createServiceRequest',
+        'tickets.approveServiceRequest',
+        'tickets.createProblem',
+        'tickets.manageProblem',
         'assets.view',
         'assets.create',
         'assets.edit',
@@ -490,14 +484,13 @@ export class PermissionService {
         'tickets.close',
         'tickets.reopen',
         'tickets.comment',
-        'incidents.view',
-        'incidents.create',
-        'incidents.edit',
-        'incidents.manage',
-        'changes.view',
-        'changes.create',
-        'changes.edit',
-        'changes.implement',
+        'tickets.createIncident',
+        'tickets.manageIncident',
+        'tickets.createChange',
+        'tickets.implementChange',
+        'tickets.createServiceRequest',
+        'tickets.createProblem',
+        'tickets.manageProblem',
         'assets.view',
         'assets.create',
         'assets.edit',
@@ -524,7 +517,7 @@ export class PermissionService {
         'tickets.create',
         'tickets.edit.own',
         'tickets.comment',
-        'incidents.view',
+        'tickets.createServiceRequest',
         'assets.view',
         'projects.view.own',
         'kb.view',
