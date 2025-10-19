@@ -1,0 +1,42 @@
+{
+  "manifest_version": 3,
+  "name": "Deskwise Knowledge Recorder",
+  "version": "1.0.0",
+  "description": "Record mouse clicks and generate automated how-to guides for Deskwise knowledge base",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage",
+    "tabs",
+    "desktopCapture"
+  ],
+  "host_permissions": [
+    "http://localhost:9002/*",
+    "https://*.deskwise.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["recorder.css"]
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Deskwise Knowledge Recorder"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["recorder.css"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

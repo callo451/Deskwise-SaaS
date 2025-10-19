@@ -1,0 +1,582 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
+import { useParams, useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { ArrowLeft, Send, Clock, User, Tag, Paperclip, Lock, AlertTriangle, Target, Star } from 'lucide-react'
+import { formatDateTime, formatRelativeTime, cn } from '@/lib/utils'
+import { FileUpload } from '@/components/tickets/file-upload'
+import { AttachmentList } from '@/components/tickets/attachment-list'
+import { CannedResponseSelector } from '@/components/tickets/canned-response-selector'
+import { InternalNoteToggle } from '@/components/tickets/internal-note-toggle'
+import { UserAssignmentSelector } from '@/components/tickets/user-assignment-selector'
+import { SLAIndicator } from '@/components/tickets/sla-indicator'
+import { SLATimer } from '@/components/tickets/sla-timer'
+import { EscalationButton } from '@/components/tickets/escalation-button'
+import { CSATRatingDialog } from '@/components/tickets/csat-rating-dialog'
+import { CSATRatingDisplay } from '@/components/tickets/csat-rating-display'
+import { TicketAttachment, CSATRating } from '@/lib/types'
+
+interface Ticket {
+  _id: string
+  ticketNumber: string
+  title: string
+  description: string
+  status: 'new' | 'open' | 'pending' | 'resolved' | 'closed'
+  priority: 'low' | 'medium' | 'high' | 'critical'
+  category: string
+  assignedTo?: string
+  assignedToName?: string
+  requesterId: string
+  createdAt: string
+  updatedAt: string
+  attachments?: TicketAttachment[]
+  csatRating?: CSATRating
+  sla?: {
+    responseTime: number
+    resolutionTime: number
+    responseDeadline: string
+    resolutionDeadline: string
+    breached: boolean
+  }
+}
+
+interface Comment {
+  _id: string
+  content: string
+  createdBy: string
+  createdAt: string
+  isInternal: boolean
+}
+
+export default function TicketDetailPage() {
+  const params = useParams()
+  const router = useRouter()
+  const { data: session } = useSession()
+  const [ticket, setTicket] = useState<Ticket | null>(null)
+  const [comments, setComments] = useState<Comment[]>([])
+  const [loading, setLoading] = useState(true)
+  const [newComment, setNewComment] = useState('')
+  const [submittingComment, setSubmittingComment] = useState(false)
+  const [showFileUpload, setShowFileUpload] = useState(false)
+  const [isInternalNote, setIsInternalNote] = useState(false)
+  const [showCSATDialog, setShowCSATDialog] = useState(false)
+
+  useEffect(() => {
+    if (params.id) {
+      fetchTicket()
+      fetchComments()
+    }
+  }, [params.id])
+
+  const fetchTicket = async () => {
+    try {
+      const response = await fetch(`/api/tickets/${params.id}`)
+      const data = await response.json()
+
+      if (data.success) {
+        setTicket(data.data)
+      }
+    } catch (error) {
+      console.error('Error fetching ticket:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchComments = async () => {
+    try {
+      const response = await fetch(`/api/tickets/${params.id}/comments`)
+      const data = await response.json()
+
+      if (data.success) {
+        setComments(data.data)
+      }
+    } catch (error) {
+      console.error('Error fetching comments:', error)
+    }
+  }
+
+  const handleStatusChange = async (newStatus: string) => {
+    try {
+      const response = await fetch(`/api/tickets/${params.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        const updatedTicket = data.data
+        setTicket(updatedTicket)
+
+        // Auto-show CSAT dialog if status changed to resolved/closed
+        // and user is the requester and hasn't rated yet
+        if (
+          (newStatus === 'resolved' || newStatus === 'closed') &&
+          session?.user?.userId === updatedTicket.requesterId &&
+          !updatedTicket.csatRating
+        ) {
+          // Show dialog after a short delay for better UX
+          setTimeout(() => setShowCSATDialog(true), 500)
+        }
+      }
+    } catch (error) {
+      console.error('Error updating status:', error)
+    }
+  }
+
+  const handleAddComment = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newComment.trim()) return
+
+    setSubmittingComment(true)
+
+    try {
+      const response = await fetch(`/api/tickets/${params.id}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content: newComment,
+          isInternal: isInternalNote,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        setComments([...comments, data.data])
+        setNewComment('')
+        setIsInternalNote(false) // Reset toggle after submission
+      } else {
+        // Show error to user
+        alert(data.error || 'Failed to add comment')
+      }
+    } catch (error) {
+      console.error('Error adding comment:', error)
+      alert('Failed to add comment')
+    } finally {
+      setSubmittingComment(false)
+    }
+  }
+
+  const handleAttachmentChange = () => {
+    // Refresh ticket to get updated attachments
+    fetchTicket()
+    setShowFileUpload(false)
+  }
+
+  const handleCannedResponseSelect = (content: string) => {
+    // Insert the canned response content into the comment field
+    setNewComment((prev) => {
+      // If there's existing text, add a line break before inserting
+      const separator = prev.trim() ? '\n\n' : ''
+      return prev + separator + content
+    })
+  }
+
+  const getStatusBadge = (status: string) => {
+    const variants: Record<string, any> = {
+      new: 'default',
+      open: 'default',
+      pending: 'warning',
+      resolved: 'success',
+      closed: 'secondary',
+    }
+    return <Badge variant={variants[status]}>{status}</Badge>
+  }
+
+  const getPriorityBadge = (priority: string) => {
+    const variants: Record<string, any> = {
+      low: 'secondary',
+      medium: 'default',
+      high: 'warning',
+      critical: 'destructive',
+    }
+    return <Badge variant={variants[priority]}>{priority}</Badge>
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <p className="text-muted-foreground">Loading ticket...</p>
+      </div>
+    )
+  }
+
+  if (!ticket) {
+    return (
+      <div className="text-center py-12">
+        <h2 className="text-2xl font-bold mb-2">Ticket Not Found</h2>
+        <p className="text-muted-foreground mb-4">
+          The ticket you're looking for doesn't exist.
+        </p>
+        <Link href="/tickets">
+          <Button>Back to Tickets</Button>
+        </Link>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center gap-4">
+        <Link href="/tickets">
+          <Button variant="ghost" size="icon">
+            <ArrowLeft className="w-4 h-4" />
+          </Button>
+        </Link>
+        <div className="flex-1">
+          <div className="flex items-center gap-3 mb-1">
+            <h1 className="text-3xl font-bold tracking-tight">
+              {ticket.ticketNumber}
+            </h1>
+            {getStatusBadge(ticket.status)}
+            {getPriorityBadge(ticket.priority)}
+          </div>
+          <p className="text-muted-foreground">{ticket.title}</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Main Content */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Description */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Description</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="whitespace-pre-wrap">{ticket.description}</p>
+            </CardContent>
+          </Card>
+
+          {/* Attachments */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Paperclip className="w-5 h-5" />
+                    Attachments
+                  </CardTitle>
+                  <CardDescription>
+                    {ticket.attachments?.length || 0} file{ticket.attachments?.length !== 1 ? 's' : ''}
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowFileUpload(!showFileUpload)}
+                >
+                  {showFileUpload ? 'Cancel' : 'Upload Files'}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* File Upload Section */}
+              {showFileUpload && (
+                <FileUpload
+                  ticketId={ticket._id}
+                  onUploadComplete={handleAttachmentChange}
+                />
+              )}
+
+              {/* Attachment List */}
+              <AttachmentList
+                ticketId={ticket._id}
+                attachments={ticket.attachments || []}
+                onAttachmentDeleted={handleAttachmentChange}
+              />
+            </CardContent>
+          </Card>
+
+          {/* CSAT Rating Display */}
+          {ticket.csatRating && (
+            <CSATRatingDisplay rating={ticket.csatRating} />
+          )}
+
+          {/* Comments */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Activity & Comments</CardTitle>
+              <CardDescription>
+                {comments.length} {comments.length === 1 ? 'comment' : 'comments'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Comments List */}
+              <div className="space-y-4">
+                {comments.map((comment) => (
+                  <div
+                    key={comment._id}
+                    className={cn(
+                      'flex gap-3 p-3 rounded-lg transition-colors',
+                      comment.isInternal
+                        ? 'bg-amber-50 border border-amber-200'
+                        : 'bg-transparent'
+                    )}
+                  >
+                    <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white text-sm font-semibold flex-shrink-0">
+                      {comment.createdBy[0]?.toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span className="font-medium text-sm">
+                          User {comment.createdBy}
+                        </span>
+                        {comment.isInternal && (
+                          <Badge
+                            variant="secondary"
+                            className="bg-amber-100 text-amber-900 border-amber-300 text-xs"
+                          >
+                            <Lock className="w-3 h-3 mr-1" />
+                            Internal
+                          </Badge>
+                        )}
+                        <span className="text-xs text-muted-foreground">
+                          {formatRelativeTime(comment.createdAt)}
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words">
+                        {comment.content}
+                      </p>
+                      {comment.isInternal && (
+                        <p className="text-xs text-amber-700 mt-1 italic">
+                          Only visible to your team
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+
+                {comments.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-8">
+                    No comments yet. Be the first to comment!
+                  </p>
+                )}
+              </div>
+
+              {/* Add Comment Form */}
+              <form onSubmit={handleAddComment} className="space-y-3 pt-4 border-t">
+                <textarea
+                  placeholder="Add a comment..."
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  rows={3}
+                  className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                />
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Only show internal note toggle for admins and technicians */}
+                  {session?.user?.role !== 'user' && (
+                    <InternalNoteToggle
+                      value={isInternalNote}
+                      onChange={setIsInternalNote}
+                      disabled={submittingComment}
+                    />
+                  )}
+                  <div className="flex items-center gap-2 ml-auto">
+                    <CannedResponseSelector
+                      onSelect={handleCannedResponseSelect}
+                      variables={{
+                        ticketNumber: ticket.ticketNumber,
+                        ticketTitle: ticket.title,
+                        ticketCategory: ticket.category,
+                        technicianName: session?.user?.name,
+                        requesterName: 'User', // Would need to fetch from ticket.requesterId
+                      }}
+                      disabled={submittingComment}
+                    />
+                    <Button type="submit" disabled={submittingComment || !newComment.trim()}>
+                      <Send className="w-4 h-4 mr-2" />
+                      {submittingComment ? 'Sending...' : 'Add Comment'}
+                    </Button>
+                  </div>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Sidebar */}
+        <div className="space-y-6">
+          {/* SLA Status */}
+          {ticket.sla && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Target className="w-5 h-5" />
+                    SLA Status
+                  </CardTitle>
+                  {session?.user?.role !== 'user' && (
+                    <EscalationButton
+                      ticketId={ticket._id}
+                      ticketNumber={ticket.ticketNumber}
+                      onEscalated={fetchTicket}
+                    />
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <SLAIndicator
+                  sla={ticket.sla}
+                  createdAt={ticket.createdAt}
+                  variant="detailed"
+                  showProgress={true}
+                />
+
+                <div className="pt-4 border-t space-y-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Response Time:</span>
+                    <span className="font-medium">{ticket.sla.responseTime} min</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Resolution Time:</span>
+                    <span className="font-medium">{ticket.sla.resolutionTime} min</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Deadline:</span>
+                    <span className="font-medium text-xs">
+                      {formatDateTime(ticket.sla.resolutionDeadline)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Live Timer */}
+                <div className="pt-4 border-t">
+                  <div className="text-xs text-muted-foreground mb-2 uppercase font-semibold">
+                    Live Countdown
+                  </div>
+                  <SLATimer
+                    deadline={ticket.sla.resolutionDeadline}
+                    createdAt={ticket.createdAt}
+                    showLabel={false}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Status Control */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Status</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Select value={ticket.status} onValueChange={handleStatusChange}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="new">New</SelectItem>
+                  <SelectItem value="open">Open</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="resolved">Resolved</SelectItem>
+                  <SelectItem value="closed">Closed</SelectItem>
+                </SelectContent>
+              </Select>
+            </CardContent>
+          </Card>
+
+          {/* Assignment */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Assigned To</CardTitle>
+              <CardDescription>
+                Assign this ticket to a team member
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <UserAssignmentSelector
+                ticketId={ticket._id}
+                currentAssignee={ticket.assignedTo}
+                currentAssigneeName={ticket.assignedToName}
+                onAssignmentChange={fetchTicket}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Details */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Details</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-2 text-sm">
+                <Tag className="w-4 h-4 text-muted-foreground" />
+                <span className="text-muted-foreground">Category:</span>
+                <span className="font-medium">{ticket.category}</span>
+              </div>
+
+              <div className="flex items-center gap-2 text-sm">
+                <Clock className="w-4 h-4 text-muted-foreground" />
+                <span className="text-muted-foreground">Created:</span>
+                <span className="font-medium">{formatRelativeTime(ticket.createdAt)}</span>
+              </div>
+
+              <div className="flex items-center gap-2 text-sm">
+                <Clock className="w-4 h-4 text-muted-foreground" />
+                <span className="text-muted-foreground">Updated:</span>
+                <span className="font-medium">{formatRelativeTime(ticket.updatedAt)}</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* CSAT Rating Button (for requesters only) */}
+          {session?.user?.userId === ticket.requesterId &&
+            (ticket.status === 'resolved' || ticket.status === 'closed') &&
+            !ticket.csatRating && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Star className="w-5 h-5 text-yellow-500" />
+                    Rate Your Experience
+                  </CardTitle>
+                  <CardDescription>
+                    Help us improve by rating your support experience
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button
+                    onClick={() => setShowCSATDialog(true)}
+                    className="w-full"
+                    variant="outline"
+                  >
+                    <Star className="w-4 h-4 mr-2" />
+                    Submit Rating
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+        </div>
+      </div>
+
+      {/* CSAT Rating Dialog */}
+      <CSATRatingDialog
+        ticketId={ticket._id}
+        ticketNumber={ticket.ticketNumber}
+        isOpen={showCSATDialog}
+        onClose={() => setShowCSATDialog(false)}
+        onSubmit={() => {
+          fetchTicket() // Refresh to show the new rating
+        }}
+      />
+    </div>
+  )
+}

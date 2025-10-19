@@ -1,0 +1,70 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { QuoteService } from '@/lib/services/quotes'
+import { ClientService } from '@/lib/services/clients'
+import { OrganizationService } from '@/lib/services/organization'
+import { renderToStream } from '@react-pdf/renderer'
+import { QuotePDF } from '@/lib/pdf/quote-template'
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await getServerSession(authOptions)
+
+  if (!session?.user?.orgId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  // Check if org is MSP mode
+  if ((session.user as any).orgMode !== 'msp') {
+    return NextResponse.json(
+      { error: 'Feature only available for MSP organizations' },
+      { status: 403 }
+    )
+  }
+
+  try {
+    const { id } = await params
+    const orgId = session.user.orgId
+
+    // Fetch quote
+    const quote = await QuoteService.getQuoteById(id, orgId)
+    if (!quote) {
+      return NextResponse.json({ error: 'Quote not found' }, { status: 404 })
+    }
+
+    // Fetch client
+    const client = await ClientService.getClientById(quote.clientId, orgId)
+
+    // Fetch organization
+    const organization = await OrganizationService.getOrganizationById(orgId)
+
+    // Generate PDF
+    const stream = await renderToStream(
+      QuotePDF({ quote, client, organization })
+    )
+
+    // Convert stream to buffer
+    const chunks: Uint8Array[] = []
+    for await (const chunk of stream) {
+      chunks.push(chunk)
+    }
+    const buffer = Buffer.concat(chunks)
+
+    // Return PDF as download
+    return new NextResponse(buffer, {
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="Quote-${quote.quoteNumber}.pdf"`,
+      },
+    })
+  } catch (error) {
+    console.error('Generate quote PDF error:', error)
+    return NextResponse.json(
+      { error: 'Failed to generate PDF' },
+      { status: 500 }
+    )
+  }
+}
