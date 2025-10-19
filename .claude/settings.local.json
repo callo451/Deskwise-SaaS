@@ -86,7 +86,10 @@
       "Bash(npm view myob --json)",
       "WebFetch(domain:developer.myob.com)",
       "Bash(git add .)",
-      "Bash(rm -f agent/NUL nul)"
+      "Bash(rm -f agent/NUL nul)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nInitial commit: Deskwise ITSM platform with comprehensive features\n\nComplete Next.js 15 ITSM/PSA platform including:\n- Multi-tenant architecture with MongoDB\n- RBAC system with 120+ permissions\n- Remote control feature with WebRTC (Full HD 1080p @ 30 FPS)\n- Knowledge base with hierarchical categories\n- Ticketing, incidents, change management\n- Asset management with Go monitoring agent\n- Client portal with customizable blocks\n- Accounting integrations (QuickBooks, Xero, MYOB)\n- Email notifications with AWS SES\n- Comprehensive documentation\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git push origin main)",
+      "Bash(git pull origin main --no-rebase)"
     ],
     "deny": [],
     "ask": []

@@ -298,6 +298,262 @@ export interface ProblemUpdate {
 }
 
 // ============================================
+// Unified Ticketing System
+// ============================================
+
+// Ticket Type Enum
+export type TicketType = 'ticket' | 'incident' | 'service_request' | 'change' | 'problem'
+
+// Unified Status Union (encompasses all type-specific statuses)
+export type UnifiedTicketStatus =
+  | TicketStatus
+  | IncidentStatus
+  | ServiceRequestStatus
+  | ChangeStatus
+  | ProblemStatus
+
+// Type-specific metadata interfaces
+export interface TicketMetadata {
+  type: 'ticket'
+  // Standard ticket has minimal additional metadata
+  linkedTickets?: string[]
+}
+
+export interface IncidentMetadata {
+  type: 'incident'
+  severity: IncidentSeverity
+  impact: IncidentImpact
+  urgency: IncidentUrgency
+  affectedServices: string[]
+  clientIds: string[] // Empty array for "All clients"
+  isPublic: boolean
+  startedAt: Date
+  relatedProblemId?: string
+}
+
+export interface ServiceRequestMetadata {
+  type: 'service_request'
+  serviceId?: string // Reference to ServiceCatalogueItem
+  formData?: Record<string, any> // Submitted form data
+  approvalStatus?: 'pending' | 'approved' | 'rejected'
+  approvedBy?: string
+  approvedByName?: string
+  approvedAt?: Date
+  rejectionReason?: string
+  completedAt?: Date
+}
+
+export interface ChangeMetadata {
+  type: 'change'
+  risk: ChangeRisk
+  impact: ChangeImpact
+  plannedStartDate: Date
+  plannedEndDate: Date
+  actualStartDate?: Date
+  actualEndDate?: Date
+  affectedAssets: string[]
+  relatedTickets: string[]
+  backoutPlan?: string
+  testPlan?: string
+  implementationPlan?: string
+  approvalStatus?: 'pending' | 'approved' | 'rejected'
+  approvedBy?: string
+  approvedByName?: string
+  approvedAt?: Date
+  rejectionReason?: string
+  cabMembers?: string[] // Change Advisory Board members
+  cabNotes?: string
+}
+
+export interface ProblemMetadata {
+  type: 'problem'
+  impact: ProblemImpact
+  urgency: ProblemUrgency
+  rootCause?: string
+  workaround?: string
+  solution?: string
+  relatedIncidents: string[] // Array of Incident IDs
+  affectedServices: string[]
+  clientIds: string[] // Empty array for "All clients"
+  isPublic: boolean
+  startedAt: Date
+  knownErrorDate?: Date
+}
+
+// Type metadata union
+export type TypeMetadata =
+  | TicketMetadata
+  | IncidentMetadata
+  | ServiceRequestMetadata
+  | ChangeMetadata
+  | ProblemMetadata
+
+// Main Unified Ticket Interface
+export interface UnifiedTicket extends BaseEntity {
+  // Universal fields (all ticket types)
+  ticketNumber: string // Universal identifier (can be TKT-001, INC-001, CHG-001, etc.)
+  legacyNumber?: string // Original number from migration (incidentNumber, changeNumber, etc.)
+  ticketType: TicketType
+  title: string
+  description: string
+  status: UnifiedTicketStatus
+  priority: TicketPriority | IncidentPriority | ServiceRequestPriority | ProblemPriority
+  category: string
+
+  // User references
+  requesterId: string // Person who created/requested
+  requesterName?: string
+  assignedTo?: string
+  assignedToName?: string
+
+  // Client/organization
+  clientId?: string
+  clientName?: string
+
+  // Tags and relationships
+  tags: string[]
+  linkedAssets?: string[] // Array of Asset IDs
+  parentTicketId?: string // For hierarchical relationships
+  childTicketIds?: string[] // Sub-tickets
+
+  // Attachments and comments
+  attachments?: TicketAttachment[]
+
+  // SLA tracking
+  sla?: {
+    responseTime: number // minutes
+    resolutionTime: number // minutes
+    responseDeadline: Date
+    resolutionDeadline: Date
+    breached: boolean
+    pausedAt?: Date // For SLA pause functionality
+    pausedDuration?: number // Total paused time in minutes
+  }
+
+  // Time tracking
+  totalTimeSpent?: number // Total time in minutes
+
+  // CSAT
+  csatRating?: CSATRating
+
+  // Timestamps
+  resolvedAt?: Date
+  closedAt?: Date
+
+  // Type-specific metadata (discriminated union)
+  metadata: TypeMetadata
+}
+
+// Unified ticket update (for incidents and problems)
+export interface UnifiedTicketUpdate {
+  _id: ObjectId
+  ticketId: string
+  ticketType: TicketType
+  orgId: string
+  updateType: 'status' | 'root_cause' | 'workaround' | 'solution' | 'general' | 'incident_update'
+  status?: UnifiedTicketStatus
+  message: string
+  createdBy: string
+  createdByName?: string
+  createdAt: Date
+  isPublic?: boolean // For public incident updates
+}
+
+// Workflow configuration type
+export interface TicketTypeWorkflow {
+  type: TicketType
+  availableStatuses: string[]
+  requiredFields: string[]
+  optionalFields: string[]
+  requiresApproval: boolean
+  allowPublic: boolean
+  slaCalculationMethod: 'priority' | 'impact_urgency_matrix' | 'change_impact' | 'service_catalog'
+  allowedTransitions: Record<string, string[]> // status -> allowed next statuses
+  notificationTriggers: string[] // Which events trigger notifications
+}
+
+// Ticket creation input types
+export interface CreateTicketInput {
+  type: 'ticket'
+  title: string
+  description: string
+  priority: TicketPriority
+  category: string
+  requesterId: string
+  clientId?: string
+  assignedTo?: string
+  tags?: string[]
+  linkedAssets?: string[]
+}
+
+export interface CreateIncidentInput {
+  type: 'incident'
+  title: string
+  description: string
+  severity: IncidentSeverity
+  impact: IncidentImpact
+  urgency: IncidentUrgency
+  affectedServices: string[]
+  clientIds?: string[]
+  isPublic: boolean
+  assignedTo?: string
+  tags?: string[]
+}
+
+export interface CreateServiceRequestInput {
+  type: 'service_request'
+  title: string
+  description: string
+  priority: ServiceRequestPriority
+  category: string
+  requesterId: string
+  clientId?: string
+  serviceId?: string
+  formData?: Record<string, any>
+  tags?: string[]
+}
+
+export interface CreateChangeInput {
+  type: 'change'
+  title: string
+  description: string
+  risk: ChangeRisk
+  impact: ChangeImpact
+  category: string
+  requestedBy: string
+  plannedStartDate: Date
+  plannedEndDate: Date
+  affectedAssets?: string[]
+  backoutPlan: string
+  testPlan?: string
+  implementationPlan?: string
+  tags?: string[]
+}
+
+export interface CreateProblemInput {
+  type: 'problem'
+  title: string
+  description: string
+  priority: ProblemPriority
+  impact: ProblemImpact
+  urgency: ProblemUrgency
+  category: string
+  reportedBy: string
+  affectedServices?: string[]
+  clientIds?: string[]
+  isPublic: boolean
+  relatedIncidents?: string[]
+  tags?: string[]
+}
+
+export type CreateUnifiedTicketInput =
+  | CreateTicketInput
+  | CreateIncidentInput
+  | CreateServiceRequestInput
+  | CreateChangeInput
+  | CreateProblemInput
+
+// ============================================
 // Projects
 // ============================================
 
