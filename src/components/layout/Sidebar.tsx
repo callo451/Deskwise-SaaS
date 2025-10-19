@@ -68,11 +68,7 @@ const navigationCategories: NavigationCategory[] = [
     name: 'Service Desk',
     icon: Headphones,
     items: [
-      { name: 'Tickets', href: '/tickets', icon: Ticket },
-      { name: 'Service Requests', href: '/service-requests', icon: ListChecks },
-      { name: 'Incidents', href: '/incidents', icon: AlertCircle },
-      { name: 'Problems', href: '/problems', icon: Bug },
-      { name: 'Change Management', href: '/changes', icon: GitBranch },
+      { name: 'Tickets', href: '/unified-tickets', icon: Ticket },
     ],
   },
   {

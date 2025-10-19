@@ -53,14 +53,14 @@ export class IncidentAnalyticsService {
     endDate?: Date
   ): Promise<IncidentAnalyticsMetrics> {
     const db = await getDatabase()
-    const incidentsCollection = db.collection(COLLECTIONS.INCIDENTS)
+    const incidentsCollection = db.collection(COLLECTIONS.UNIFIED_TICKETS)
 
-    // Build date filter
-    const dateFilter: any = { orgId }
+    // Build date filter (filter for incident type tickets only)
+    const dateFilter: any = { orgId, ticketType: 'incident' }
     if (startDate || endDate) {
-      dateFilter.startedAt = {}
-      if (startDate) dateFilter.startedAt.$gte = startDate
-      if (endDate) dateFilter.startedAt.$lte = endDate
+      dateFilter.createdAt = {}
+      if (startDate) dateFilter.createdAt.$gte = startDate
+      if (endDate) dateFilter.createdAt.$lte = endDate
     }
 
     // Aggregate pipeline for overview metrics
@@ -89,10 +89,10 @@ export class IncidentAnalyticsService {
                     },
                   },
                   p1: {
-                    $sum: { $cond: [{ $eq: ['$priority', 'critical'] }, 1, 0] },
+                    $sum: { $cond: [{ $eq: ['$metadata.severity', 'critical'] }, 1, 0] },
                   },
                   p2: {
-                    $sum: { $cond: [{ $eq: ['$priority', 'high'] }, 1, 0] },
+                    $sum: { $cond: [{ $eq: ['$metadata.severity', 'high'] }, 1, 0] },
                   },
                 },
               },
@@ -103,7 +103,7 @@ export class IncidentAnalyticsService {
                 $project: {
                   resolutionTime: {
                     $divide: [
-                      { $subtract: ['$resolvedAt', '$startedAt'] },
+                      { $subtract: ['$resolvedAt', '$createdAt'] },
                       3600000, // Convert to hours
                     ],
                   },
@@ -156,8 +156,9 @@ export class IncidentAnalyticsService {
     const previousPeriodEnd = startDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
 
     const previousCount = await incidentsCollection.countDocuments({
+      ticketType: 'incident',
       orgId,
-      startedAt: { $gte: previousPeriodStart, $lte: previousPeriodEnd },
+      createdAt: { $gte: previousPeriodStart, $lte: previousPeriodEnd },
     })
 
     const trendValue = counts.total - previousCount
@@ -192,7 +193,7 @@ export class IncidentAnalyticsService {
     granularity: 'day' | 'week' | 'month' = 'day'
   ): Promise<IncidentSeverityTimeline[]> {
     const db = await getDatabase()
-    const incidentsCollection = db.collection(COLLECTIONS.INCIDENTS)
+    const incidentsCollection = db.collection(COLLECTIONS.UNIFIED_TICKETS)
 
     const dateFormat =
       granularity === 'day'
@@ -206,21 +207,22 @@ export class IncidentAnalyticsService {
         {
           $match: {
             orgId,
-            startedAt: { $gte: startDate, $lte: endDate },
+            ticketType: 'incident',
+            createdAt: { $gte: startDate, $lte: endDate },
           },
         },
         {
           $group: {
-            _id: { $dateToString: { format: dateFormat, date: '$startedAt' } },
+            _id: { $dateToString: { format: dateFormat, date: '$createdAt' } },
             total: { $sum: 1 },
             minor: {
-              $sum: { $cond: [{ $eq: ['$severity', 'minor'] }, 1, 0] },
+              $sum: { $cond: [{ $eq: ['$metadata.severity', 'minor'] }, 1, 0] },
             },
             major: {
-              $sum: { $cond: [{ $eq: ['$severity', 'major'] }, 1, 0] },
+              $sum: { $cond: [{ $eq: ['$metadata.severity', 'major'] }, 1, 0] },
             },
             critical: {
-              $sum: { $cond: [{ $eq: ['$severity', 'critical'] }, 1, 0] },
+              $sum: { $cond: [{ $eq: ['$metadata.severity', 'critical'] }, 1, 0] },
             },
           },
         },
@@ -246,14 +248,14 @@ export class IncidentAnalyticsService {
     endDate?: Date
   ): Promise<RootCauseDistribution[]> {
     const db = await getDatabase()
-    const incidentsCollection = db.collection(COLLECTIONS.INCIDENTS)
+    const incidentsCollection = db.collection(COLLECTIONS.UNIFIED_TICKETS)
 
     // Build date filter
-    const dateFilter: any = { orgId, resolvedAt: { $exists: true } }
+    const dateFilter: any = { orgId, ticketType: 'incident', resolvedAt: { $exists: true } }
     if (startDate || endDate) {
-      dateFilter.startedAt = {}
-      if (startDate) dateFilter.startedAt.$gte = startDate
-      if (endDate) dateFilter.startedAt.$lte = endDate
+      dateFilter.createdAt = {}
+      if (startDate) dateFilter.createdAt.$gte = startDate
+      if (endDate) dateFilter.createdAt.$lte = endDate
     }
 
     // For now, we'll use category as a proxy for root cause
@@ -263,10 +265,10 @@ export class IncidentAnalyticsService {
         { $match: dateFilter },
         {
           $group: {
-            _id: '$severity', // Group by severity as proxy
+            _id: '$metadata.severity', // Group by severity as proxy
             count: { $sum: 1 },
             totalResolutionTime: {
-              $sum: { $subtract: ['$resolvedAt', '$startedAt'] },
+              $sum: { $subtract: ['$resolvedAt', '$createdAt'] },
             },
           },
         },
@@ -297,30 +299,30 @@ export class IncidentAnalyticsService {
     endDate?: Date
   ): Promise<ServiceImpactAnalysis[]> {
     const db = await getDatabase()
-    const incidentsCollection = db.collection(COLLECTIONS.INCIDENTS)
+    const incidentsCollection = db.collection(COLLECTIONS.UNIFIED_TICKETS)
 
     // Build date filter
-    const dateFilter: any = { orgId }
+    const dateFilter: any = { orgId, ticketType: 'incident' }
     if (startDate || endDate) {
-      dateFilter.startedAt = {}
-      if (startDate) dateFilter.startedAt.$gte = startDate
-      if (endDate) dateFilter.startedAt.$lte = endDate
+      dateFilter.createdAt = {}
+      if (startDate) dateFilter.createdAt.$gte = startDate
+      if (endDate) dateFilter.createdAt.$lte = endDate
     }
 
     // Unwind affectedServices array and analyze
     const serviceData = await incidentsCollection
       .aggregate([
         { $match: dateFilter },
-        { $unwind: '$affectedServices' },
+        { $unwind: '$metadata.impactedServices' },
         {
           $group: {
-            _id: '$affectedServices',
+            _id: '$metadata.impactedServices',
             incidentCount: { $sum: 1 },
             totalDowntime: {
               $sum: {
                 $cond: [
                   { $ne: ['$resolvedAt', null] },
-                  { $subtract: ['$resolvedAt', '$startedAt'] },
+                  { $subtract: ['$resolvedAt', '$createdAt'] },
                   0,
                 ],
               },
@@ -369,14 +371,14 @@ export class IncidentAnalyticsService {
     endDate?: Date
   ): Promise<Record<IncidentStatus, number>> {
     const db = await getDatabase()
-    const incidentsCollection = db.collection(COLLECTIONS.INCIDENTS)
+    const incidentsCollection = db.collection(COLLECTIONS.UNIFIED_TICKETS)
 
     // Build date filter
-    const dateFilter: any = { orgId }
+    const dateFilter: any = { orgId, ticketType: 'incident' }
     if (startDate || endDate) {
-      dateFilter.startedAt = {}
-      if (startDate) dateFilter.startedAt.$gte = startDate
-      if (endDate) dateFilter.startedAt.$lte = endDate
+      dateFilter.createdAt = {}
+      if (startDate) dateFilter.createdAt.$gte = startDate
+      if (endDate) dateFilter.createdAt.$lte = endDate
     }
 
     const statusData = await incidentsCollection
@@ -409,17 +411,18 @@ export class IncidentAnalyticsService {
     endDate?: Date
   ): Promise<Array<{ severity: IncidentSeverity; mttrHours: number }>> {
     const db = await getDatabase()
-    const incidentsCollection = db.collection(COLLECTIONS.INCIDENTS)
+    const incidentsCollection = db.collection(COLLECTIONS.UNIFIED_TICKETS)
 
     // Build date filter
     const dateFilter: any = {
       orgId,
+      ticketType: 'incident',
       resolvedAt: { $exists: true },
     }
     if (startDate || endDate) {
-      dateFilter.startedAt = {}
-      if (startDate) dateFilter.startedAt.$gte = startDate
-      if (endDate) dateFilter.startedAt.$lte = endDate
+      dateFilter.createdAt = {}
+      if (startDate) dateFilter.createdAt.$gte = startDate
+      if (endDate) dateFilter.createdAt.$lte = endDate
     }
 
     const mttrData = await incidentsCollection
@@ -427,9 +430,9 @@ export class IncidentAnalyticsService {
         { $match: dateFilter },
         {
           $group: {
-            _id: '$severity',
+            _id: '$metadata.severity',
             avgResolutionTime: {
-              $avg: { $subtract: ['$resolvedAt', '$startedAt'] },
+              $avg: { $subtract: ['$resolvedAt', '$createdAt'] },
             },
           },
         },

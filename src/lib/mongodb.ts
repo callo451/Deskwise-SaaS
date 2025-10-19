@@ -51,12 +51,25 @@ export const COLLECTIONS = {
   TIME_ENTRIES: 'time_entries',
   CSAT_RATINGS: 'csat_ratings',
   CANNED_RESPONSES: 'canned_responses',
+
+  // Unified Ticketing System (Tickets, Incidents, Changes, Service Requests, Problems)
+  UNIFIED_TICKETS: 'unified_tickets',
+  UNIFIED_TICKET_UPDATES: 'unified_ticket_updates',
+
+  // Legacy collections (deprecated - kept for migration rollback)
+  /** @deprecated Use UNIFIED_TICKETS with ticketType='service_request' filter */
   SERVICE_REQUESTS: 'service_requests',
+  /** @deprecated Use UNIFIED_TICKETS with ticketType='incident' filter */
   INCIDENTS: 'incidents',
+  /** @deprecated Use UNIFIED_TICKET_UPDATES for incident updates */
   INCIDENT_UPDATES: 'incident_updates',
+  /** @deprecated Use UNIFIED_TICKETS with ticketType='problem' filter */
   PROBLEMS: 'problems',
+  /** @deprecated Use UNIFIED_TICKET_UPDATES for problem updates */
   PROBLEM_UPDATES: 'problem_updates',
+  /** @deprecated Use UNIFIED_TICKETS with ticketType='change' filter */
   CHANGE_REQUESTS: 'change_requests',
+  /** @deprecated Integrated into UNIFIED_TICKETS metadata */
   CHANGE_APPROVALS: 'change_approvals',
   PROJECTS: 'projects',
   PROJECT_TASKS: 'project_tasks',

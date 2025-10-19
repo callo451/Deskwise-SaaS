@@ -186,9 +186,9 @@ export class WorkflowTemplateService {
         orgId: 'system',
         name: 'Service Request Approval',
         description: 'Route service requests for manager approval based on estimated cost',
-        category: 'service-request',
+        category: 'ticket',
         icon: 'file-check',
-        tags: ['service-requests', 'approval', 'workflow'],
+        tags: ['tickets', 'service-requests', 'approval', 'workflow'],
         nodes: [
           {
             id: 'trigger-1',
@@ -200,8 +200,11 @@ export class WorkflowTemplateService {
               color: '#667eea',
               config: {
                 type: 'event',
-                module: 'service-requests',
+                module: 'tickets',
                 event: 'created',
+                conditions: [
+                  { field: 'ticketType', operator: 'equals', value: 'service_request' },
+                ],
               },
             },
           },
@@ -216,7 +219,7 @@ export class WorkflowTemplateService {
               color: '#f59e0b',
               config: {
                 conditions: [
-                  { field: 'item.estimatedCost', operator: 'greater-than', value: 1000 },
+                  { field: 'item.metadata.estimatedCost', operator: 'greater-than', value: 1000 },
                 ],
               },
             },
@@ -250,12 +253,12 @@ export class WorkflowTemplateService {
               color: '#3b82f6',
               config: {
                 action: 'update',
-                module: 'service-requests',
+                module: 'tickets',
                 itemId: '{{trigger.item._id}}',
                 updates: {
                   status: 'approved',
-                  approvedBy: 'system',
-                  approvedAt: new Date(),
+                  'metadata.approvedBy': 'system',
+                  'metadata.approvedAt': new Date(),
                 },
               },
             },
@@ -271,11 +274,11 @@ export class WorkflowTemplateService {
               color: '#3b82f6',
               config: {
                 action: 'update',
-                module: 'service-requests',
+                module: 'tickets',
                 itemId: '{{trigger.item._id}}',
                 updates: {
                   status: '{{approval.approved ? "approved" : "rejected"}}',
-                  approvalStatus: '{{approval.status}}',
+                  'metadata.approvalStatus': '{{approval.status}}',
                 },
               },
             },
@@ -303,8 +306,11 @@ export class WorkflowTemplateService {
           { id: 'e6', source: 'action-2', target: 'end-1' },
         ],
         trigger: {
-          module: 'service-requests',
+          module: 'tickets',
           event: 'created',
+          conditions: [
+            { field: 'ticketType', operator: 'equals', value: 'service_request' },
+          ],
         },
         isSystem: true,
         usageCount: 0,
@@ -564,9 +570,9 @@ export class WorkflowTemplateService {
         orgId: 'system',
         name: 'Incident Response',
         description: 'Automated incident response workflow with notifications and escalation',
-        category: 'incident',
+        category: 'ticket',
         icon: 'alert-octagon',
-        tags: ['incidents', 'response', 'notifications'],
+        tags: ['tickets', 'incidents', 'response', 'notifications'],
         nodes: [
           {
             id: 'trigger-1',
@@ -578,10 +584,11 @@ export class WorkflowTemplateService {
               color: '#667eea',
               config: {
                 type: 'event',
-                module: 'incidents',
+                module: 'tickets',
                 event: 'created',
                 conditions: [
-                  { field: 'severity', operator: 'equals', value: 'critical' },
+                  { field: 'ticketType', operator: 'equals', value: 'incident' },
+                  { field: 'metadata.severity', operator: 'equals', value: 'critical' },
                 ],
               },
             },
@@ -714,10 +721,11 @@ export class WorkflowTemplateService {
           { id: 'e9', source: 'notification-3', target: 'end-1' },
         ],
         trigger: {
-          module: 'incidents',
+          module: 'tickets',
           event: 'created',
           conditions: [
-            { field: 'severity', operator: 'equals', value: 'critical' },
+            { field: 'ticketType', operator: 'equals', value: 'incident' },
+            { field: 'metadata.severity', operator: 'equals', value: 'critical' },
           ],
         },
         isSystem: true,

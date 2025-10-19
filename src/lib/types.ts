@@ -1528,7 +1528,7 @@ export type TriggerType = 'manual' | 'event' | 'schedule' | 'webhook'
 /**
  * Workflow Module Types
  */
-export type WorkflowModule = 'tickets' | 'incidents' | 'problems' | 'service-requests' | 'changes' | 'assets' | 'users' | 'projects' | 'knowledge-base'
+export type WorkflowModule = 'tickets' | 'assets' | 'users' | 'projects' | 'knowledge-base'
 
 /**
  * Workflow Event Types

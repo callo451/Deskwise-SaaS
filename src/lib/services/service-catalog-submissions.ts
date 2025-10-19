@@ -1,11 +1,7 @@
 import { ObjectId } from 'mongodb'
 import { getDatabase, COLLECTIONS } from '../mongodb'
 import type { ServiceCatalogueItem, FormField } from '../types'
-import { TicketService } from './tickets'
-import { IncidentService } from './incidents'
-import { ChangeManagementService } from './change-management'
-import { ServiceRequestService } from './service-requests'
-import { ProblemService } from './problems'
+import { UnifiedTicketService } from './unified-tickets'
 import { FormBuilderService } from './form-builder'
 
 /**
@@ -86,37 +82,51 @@ export class ServiceCatalogSubmissionService {
 
     switch (service.itilCategory) {
       case 'service-request':
-        result = await ServiceRequestService.createServiceRequest(
+        result = await UnifiedTicketService.create(
           orgId,
           {
+            ticketType: 'service_request',
             title: formData.title || service.name,
             description: formData.description || service.description,
             priority: calculatedPriority as any,
             category: service.category,
-            serviceId: service._id.toString(),
-            formData,
+            requesterId: userId,
+            metadata: {
+              ticketType: 'service_request',
+              estimatedCost: formData.estimatedCost,
+              estimatedEffort: formData.estimatedEffort,
+              approvers: formData.approvers || [],
+              formData,
+            },
             sla,
           },
           userId
         )
         return {
           success: true,
-          itemType: 'service-request',
+          itemType: 'service_request',
           itemId: result._id.toString(),
-          itemNumber: result.requestNumber,
+          itemNumber: result.ticketNumber,
           data: result,
         }
 
       case 'incident':
-        result = await IncidentService.createIncident(
+        result = await UnifiedTicketService.create(
           orgId,
           {
+            ticketType: 'incident',
             title: formData.title || service.name,
             description: formData.description || service.description,
-            severity: mappedFields.severity || 'minor',
-            affectedServices: formData.affectedServices || [service.name],
-            clientIds: formData.clientIds || [],
-            isPublic: formData.isPublic !== undefined ? formData.isPublic : true,
+            priority: calculatedPriority as any,
+            category: service.category,
+            requesterId: userId,
+            metadata: {
+              ticketType: 'incident',
+              severity: mappedFields.severity || 'minor',
+              impactedServices: formData.affectedServices || [service.name],
+              publicSummary: formData.description || service.description,
+            },
+            sla,
           },
           userId
         )
@@ -124,23 +134,27 @@ export class ServiceCatalogSubmissionService {
           success: true,
           itemType: 'incident',
           itemId: result._id.toString(),
-          itemNumber: result.incidentNumber,
+          itemNumber: result.ticketNumber,
           data: result,
         }
 
       case 'problem':
-        result = await ProblemService.createProblem(
+        result = await UnifiedTicketService.create(
           orgId,
           {
+            ticketType: 'problem',
             title: formData.title || service.name,
             description: formData.description || service.description,
-            category: service.category,
             priority: calculatedPriority as any,
-            impact: mappedFields.impact || 'low',
-            urgency: mappedFields.urgency || 'low',
-            affectedServices: formData.affectedServices || [service.name],
-            clientIds: formData.clientIds || [],
-            isPublic: formData.isPublic !== undefined ? formData.isPublic : true,
+            category: service.category,
+            requesterId: userId,
+            metadata: {
+              ticketType: 'problem',
+              impact: mappedFields.impact || 'low',
+              urgency: mappedFields.urgency || 'low',
+              relatedIncidents: formData.relatedIncidents || [],
+            },
+            sla,
           },
           userId
         )
@@ -148,27 +162,35 @@ export class ServiceCatalogSubmissionService {
           success: true,
           itemType: 'problem',
           itemId: result._id.toString(),
-          itemNumber: result.problemNumber,
+          itemNumber: result.ticketNumber,
           data: result,
         }
 
       case 'change':
-        result = await ChangeManagementService.createChangeRequest(
+        result = await UnifiedTicketService.create(
           orgId,
           {
+            ticketType: 'change',
             title: formData.title || service.name,
             description: formData.description || service.description,
+            priority: calculatedPriority as any,
             category: service.category,
-            risk: mappedFields.risk || 'low',
-            impact: mappedFields.impact || 'low',
-            plannedStartDate: formData.plannedStartDate ? new Date(formData.plannedStartDate) : new Date(),
-            plannedEndDate: formData.plannedEndDate
-              ? new Date(formData.plannedEndDate)
-              : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
-            affectedAssets: formData.affectedAssets || [],
-            relatedTickets: formData.relatedTickets || [],
-            backoutPlan: formData.backoutPlan,
-            testPlan: formData.testPlan,
+            requesterId: userId,
+            metadata: {
+              ticketType: 'change',
+              changeType: formData.changeType || 'standard',
+              risk: mappedFields.risk || 'low',
+              impact: mappedFields.impact || 'low',
+              plannedStartDate: formData.plannedStartDate ? new Date(formData.plannedStartDate) : new Date(),
+              plannedEndDate: formData.plannedEndDate
+                ? new Date(formData.plannedEndDate)
+                : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+              affectedAssets: formData.affectedAssets || [],
+              backoutPlan: formData.backoutPlan,
+              testPlan: formData.testPlan,
+              implementationSteps: formData.implementationSteps || [],
+            },
+            sla,
           },
           userId
         )
@@ -176,21 +198,30 @@ export class ServiceCatalogSubmissionService {
           success: true,
           itemType: 'change',
           itemId: result._id.toString(),
-          itemNumber: result.changeNumber,
+          itemNumber: result.ticketNumber,
           data: result,
         }
 
       case 'general':
       default:
         // Create as general ticket
-        result = await TicketService.createTicket(orgId, {
-          title: formData.title || service.name,
-          description: formData.description || service.description,
-          priority: calculatedPriority as any,
-          category: service.category,
-          tags: formData.tags || [service.category],
-          sla,
-        }, userId)
+        result = await UnifiedTicketService.create(
+          orgId,
+          {
+            ticketType: 'ticket',
+            title: formData.title || service.name,
+            description: formData.description || service.description,
+            priority: calculatedPriority as any,
+            category: service.category,
+            requesterId: userId,
+            metadata: {
+              ticketType: 'ticket',
+            },
+            tags: formData.tags || [service.category],
+            sla,
+          },
+          userId
+        )
         return {
           success: true,
           itemType: 'ticket',
