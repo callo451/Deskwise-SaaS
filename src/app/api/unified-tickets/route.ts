@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
+import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { UnifiedTicketService } from '@/lib/services/unified-tickets'
 import { CreateUnifiedTicketInput, TicketType } from '@/lib/types'
-import { requirePermission, requireAnyPermission, createPermissionError } from '@/lib/middleware/permissions'
+import { requirePermission, requireAnyPermission, createPermissionError, createMultiplePermissionError } from '@/lib/middleware/permissions'
 import { NotificationEngine } from '@/lib/services/notification-engine'
 import { NotificationEvent } from '@/lib/types'
 
@@ -19,20 +19,16 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check RBAC permissions - require at least one view permission
+    // Check RBAC permissions - require tickets view permission
+    // All ticket types (tickets, incidents, changes, service requests, problems) use the same permission
     const hasPermission = await requireAnyPermission(session, [
       'tickets.view.all',
-      'tickets.view.assigned',
       'tickets.view.own',
-      'incidents.view',
-      'changes.view',
-      'service_requests.view',
-      'problems.view',
     ])
 
     if (!hasPermission) {
       return NextResponse.json(
-        { error: createPermissionError('tickets.view') },
+        { error: createMultiplePermissionError(['tickets.view.all', 'tickets.view.own'], false) },
         { status: 403 }
       )
     }
@@ -100,7 +96,7 @@ export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
 
-    if (!session?.user?.orgId || !session?.user?.userId) {
+    if (!session?.user?.orgId || !session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -112,23 +108,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Ticket type is required' }, { status: 400 })
     }
 
-    // Type-specific RBAC permission checks
+    // Type-specific RBAC permission checks using unified ticketing permissions
     let requiredPermission = ''
     switch (input.type) {
       case 'ticket':
         requiredPermission = 'tickets.create'
         break
       case 'incident':
-        requiredPermission = 'incidents.create'
+        requiredPermission = 'tickets.createIncident' // Type-specific creation permission
         break
       case 'service_request':
-        requiredPermission = 'service_requests.create'
+        requiredPermission = 'tickets.createServiceRequest'
         break
       case 'change':
-        requiredPermission = 'changes.create'
+        requiredPermission = 'tickets.createChange'
         break
       case 'problem':
-        requiredPermission = 'problems.create'
+        requiredPermission = 'tickets.createProblem'
         break
       default:
         return NextResponse.json({ error: 'Invalid ticket type' }, { status: 400 })
@@ -190,7 +186,7 @@ export async function POST(req: NextRequest) {
     const ticket = await UnifiedTicketService.create(
       session.user.orgId,
       input,
-      session.user.userId
+      session.user.id
     )
 
     // Trigger type-specific notification

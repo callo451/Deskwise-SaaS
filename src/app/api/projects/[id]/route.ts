@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { ProjectService } from '@/lib/services/projects'
+import { ProjectPermissionService } from '@/lib/services/project-permissions'
+import { requirePermission } from '@/lib/middleware/permissions'
 import { z } from 'zod'
 
 const updateProjectSchema = z.object({
@@ -36,12 +38,21 @@ export async function GET(
     }
 
     const { id } = await params
-    const project = await ProjectService.getProjectById(id, session.user.orgId)
+    const project = await ProjectService.getProject(id, session.user.orgId)
 
     if (!project) {
       return NextResponse.json(
         { success: false, error: 'Project not found' },
         { status: 404 }
+      )
+    }
+
+    // Check context-aware view permission
+    const canView = await ProjectPermissionService.canViewProject(session, project)
+    if (!canView) {
+      return NextResponse.json(
+        { success: false, error: 'Forbidden: You do not have permission to view this project' },
+        { status: 403 }
       )
     }
 
@@ -73,6 +84,26 @@ export async function PUT(
     }
 
     const { id } = await params
+
+    // Fetch project first to check permissions
+    const existingProject = await ProjectService.getProject(id, session.user.orgId)
+
+    if (!existingProject) {
+      return NextResponse.json(
+        { success: false, error: 'Project not found' },
+        { status: 404 }
+      )
+    }
+
+    // Check context-aware edit permission
+    const canEdit = await ProjectPermissionService.canEditProject(session, existingProject)
+    if (!canEdit) {
+      return NextResponse.json(
+        { success: false, error: 'Forbidden: You do not have permission to edit this project' },
+        { status: 403 }
+      )
+    }
+
     const body = await request.json()
     const validatedData = updateProjectSchema.parse(body)
 
@@ -92,7 +123,7 @@ export async function PUT(
     }
 
     const project = await ProjectService.updateProject(
-      id,
+      existingProject._id.toString(),
       session.user.orgId,
       updates
     )
@@ -144,13 +175,31 @@ export async function DELETE(
       )
     }
 
-    const { id } = await params
-    const success = await ProjectService.deleteProject(id, session.user.orgId)
+    // Check delete permission
+    const canDelete = await ProjectPermissionService.canDeleteProjects(session)
+    if (!canDelete) {
+      return NextResponse.json(
+        { success: false, error: 'Forbidden: You do not have permission to delete projects' },
+        { status: 403 }
+      )
+    }
 
-    if (!success) {
+    const { id } = await params
+    const project = await ProjectService.getProject(id, session.user.orgId)
+
+    if (!project) {
       return NextResponse.json(
         { success: false, error: 'Project not found' },
         { status: 404 }
+      )
+    }
+
+    const success = await ProjectService.deleteProject(project._id.toString(), session.user.orgId)
+
+    if (!success) {
+      return NextResponse.json(
+        { success: false, error: 'Failed to delete project' },
+        { status: 500 }
       )
     }
 

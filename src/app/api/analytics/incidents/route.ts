@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     // Check RBAC permissions
     const hasPermission = await requireAnyPermission(session, [
       'reports.view',
-      'incidents.view',
+      'tickets.view', // Unified ticketing permission (includes incidents)
     ])
 
     if (!hasPermission) {

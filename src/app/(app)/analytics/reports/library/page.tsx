@@ -34,9 +34,12 @@ export default function ReportsLibraryPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [filterCategory, setFilterCategory] = useState<string>('all')
 
-  const { data: reports, loading, refetch } = useAnalytics('/api/analytics/reports')
+  const { data: response, loading, refetch } = useAnalytics('/api/analytics/reports')
 
-  const filteredReports = reports?.filter((report: any) => {
+  // Handle API response structure { success: true, data: [...] }
+  const reports = response?.data || []
+
+  const filteredReports = reports.filter((report: any) => {
     const matchesSearch =
       report.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       report.description?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -49,11 +52,16 @@ export default function ReportsLibraryPage() {
 
   const categories = [
     { value: 'all', label: 'All Reports' },
-    { value: 'tickets', label: 'Tickets' },
+    { value: 'service_desk', label: 'Service Desk' },
     { value: 'incidents', label: 'Incidents' },
-    { value: 'assets', label: 'Assets' },
+    { value: 'changes', label: 'Change Management' },
+    { value: 'problems', label: 'Problem Management' },
+    { value: 'assets', label: 'Assets & Inventory' },
     { value: 'projects', label: 'Projects' },
-    { value: 'custom', label: 'Custom' },
+    { value: 'knowledge', label: 'Knowledge Base' },
+    { value: 'billing', label: 'Billing & Finance' },
+    { value: 'users', label: 'Users & Teams' },
+    { value: 'custom', label: 'Custom Reports' },
   ]
 
   const handleRunReport = async (reportId: string) => {

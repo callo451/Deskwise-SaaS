@@ -2,7 +2,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { ProjectService } from '@/lib/services/projects'
+import { ProjectPermissionService } from '@/lib/services/project-permissions'
+import { requirePermission } from '@/lib/middleware/permissions'
 import { z } from 'zod'
+
+// Schema for TaskDependency
+const taskDependencySchema = z.object({
+  taskId: z.string(),
+  type: z.enum(['finish_to_start', 'start_to_start', 'finish_to_finish', 'start_to_finish']),
+  lag: z.number().default(0),
+})
 
 const createTaskSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -10,7 +19,17 @@ const createTaskSchema = z.object({
   assignedTo: z.string().optional(),
   dueDate: z.string().optional(),
   estimatedHours: z.number().optional(),
-  dependencies: z.array(z.string()).optional(),
+  // Support both legacy string[] and new TaskDependency[] format
+  dependencies: z.union([
+    z.array(z.string()),
+    z.array(taskDependencySchema)
+  ]).optional(),
+  parentTaskId: z.string().optional(),
+  taskType: z.enum(['task', 'milestone', 'summary']).optional(),
+  plannedStartDate: z.string().optional(),
+  plannedEndDate: z.string().optional(),
+  percentComplete: z.number().min(0).max(100).optional(),
+  priority: z.enum(['low', 'medium', 'high', 'critical']).optional(),
 })
 
 export async function GET(
@@ -28,7 +47,27 @@ export async function GET(
     }
 
     const { id } = await params
-    const tasks = await ProjectService.getTasks(id)
+
+    // Fetch project first to check permissions
+    const project = await ProjectService.getProject(id, session.user.orgId)
+
+    if (!project) {
+      return NextResponse.json(
+        { success: false, error: 'Project not found' },
+        { status: 404 }
+      )
+    }
+
+    // Check if user can view this project (inherits project view permissions)
+    const canView = await ProjectPermissionService.canViewProject(session, project)
+    if (!canView) {
+      return NextResponse.json(
+        { success: false, error: 'Forbidden: You do not have permission to view this project' },
+        { status: 403 }
+      )
+    }
+
+    const tasks = await ProjectService.getTasks(project._id.toString())
 
     return NextResponse.json({
       success: true,
@@ -58,15 +97,37 @@ export async function POST(
     }
 
     const { id } = await params
+
+    // Fetch project first to check permissions
+    const project = await ProjectService.getProject(id, session.user.orgId)
+
+    if (!project) {
+      return NextResponse.json(
+        { success: false, error: 'Project not found' },
+        { status: 404 }
+      )
+    }
+
+    // Check task create permission
+    const canCreateTask = await requirePermission(session, 'projects.tasks.create')
+    if (!canCreateTask) {
+      return NextResponse.json(
+        { success: false, error: 'Forbidden: You do not have permission to create tasks' },
+        { status: 403 }
+      )
+    }
+
     const body = await request.json()
     const validatedData = createTaskSchema.parse(body)
 
     const task = await ProjectService.createTask(
-      id,
+      project._id.toString(),
       session.user.orgId,
       {
         ...validatedData,
         dueDate: validatedData.dueDate ? new Date(validatedData.dueDate) : undefined,
+        plannedStartDate: validatedData.plannedStartDate ? new Date(validatedData.plannedStartDate) : undefined,
+        plannedEndDate: validatedData.plannedEndDate ? new Date(validatedData.plannedEndDate) : undefined,
       },
       session.user.id
     )

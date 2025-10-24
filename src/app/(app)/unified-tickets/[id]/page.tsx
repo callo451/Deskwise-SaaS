@@ -2,13 +2,15 @@
 
 import { useState, useEffect, use } from 'react'
 import { useRouter } from 'next/navigation'
-import { Card } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
+import { useSession } from 'next-auth/react'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Separator } from '@/components/ui/separator'
 import {
   Select,
   SelectContent,
@@ -17,32 +19,45 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import {
-  ArrowLeft,
-  Ticket,
-  AlertTriangle,
-  Settings,
-  HelpCircle,
-  GitBranch,
   Check,
   X,
   Loader2,
-  Clock,
-  User,
-  Calendar,
   MessageSquare,
   AlertCircle,
-  CheckCircle2,
-  XCircle,
+  Activity,
+  Paperclip,
+  FileText,
+  Clock as ClockIcon,
+  ArrowLeft,
+  User,
+  MoreHorizontal,
+  Sparkles,
+  TrendingUp,
+  Calendar,
+  Tag as TagIcon,
 } from 'lucide-react'
+import Link from 'next/link'
+import { TicketHeader } from '@/components/unified-tickets/ticket-header'
+import { ServiceCatalogCard } from '@/components/unified-tickets/service-catalog-card'
+import { TicketDetailsCard } from '@/components/unified-tickets/ticket-details-card'
+import { TypeSpecificSections } from '@/components/unified-tickets/type-specific-sections'
+import { ActivityTimeline } from '@/components/unified-tickets/activity-timeline'
+import { EnhancedCommentSection } from '@/components/unified-tickets/enhanced-comment-section'
+import { Comment } from '@/components/unified-tickets/comment-item'
+import { AttachmentsTab } from '@/components/unified-tickets/attachments-tab'
+import { TimeTrackingTab } from '@/components/unified-tickets/time-tracking-tab'
+import { buildActivityTimeline, buildCannedResponseVariables } from '@/lib/utils/activity-timeline-builder'
+import { AIInsightsPanel } from '@/components/tickets/ai-insights-panel'
+import { ModernSLACard } from '@/components/tickets/modern-sla-card'
+import { CollapsibleCard } from '@/components/ui/collapsible-card'
 import {
   UnifiedTicket,
-  IncidentMetadata,
-  ChangeMetadata,
   ServiceRequestMetadata,
-  ProblemMetadata,
   UnifiedTicketUpdate,
+  UnifiedTicketStatus,
 } from '@/lib/types'
-import { formatDistanceToNow, format } from 'date-fns'
+import { formatDistanceToNow } from 'date-fns'
+import { cn } from '@/lib/utils'
 
 export default function UnifiedTicketDetailPage({
   params,
@@ -51,14 +66,19 @@ export default function UnifiedTicketDetailPage({
 }) {
   const { id } = use(params)
   const router = useRouter()
+  const { data: session } = useSession()
   const [ticket, setTicket] = useState<UnifiedTicket | null>(null)
   const [updates, setUpdates] = useState<UnifiedTicketUpdate[]>([])
+  const [comments, setComments] = useState<Comment[]>([])
+  const [users, setUsers] = useState<Array<{ _id: string; name: string; email: string }>>([])
   const [loading, setLoading] = useState(true)
+  const [commentsLoading, setCommentsLoading] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
   const [error, setError] = useState('')
+  const [activeTab, setActiveTab] = useState('overview')
+  const [isScrolled, setIsScrolled] = useState(false)
 
   // Action states
-  const [newStatus, setNewStatus] = useState('')
   const [approvalNotes, setApprovalNotes] = useState('')
   const [rejectionReason, setRejectionReason] = useState('')
   const [updateMessage, setUpdateMessage] = useState('')
@@ -67,7 +87,18 @@ export default function UnifiedTicketDetailPage({
   useEffect(() => {
     fetchTicket()
     fetchUpdates()
+    fetchComments()
+    fetchUsers()
   }, [id])
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20)
+    }
+
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
   const fetchTicket = async () => {
     try {
@@ -77,7 +108,6 @@ export default function UnifiedTicketDetailPage({
 
       if (data.success) {
         setTicket(data.ticket)
-        setNewStatus(data.ticket.status)
       } else {
         setError(data.error || 'Failed to load ticket')
       }
@@ -89,10 +119,6 @@ export default function UnifiedTicketDetailPage({
   }
 
   const fetchUpdates = async () => {
-    if (!ticket || !['incident', 'problem'].includes(ticket.ticketType)) {
-      return
-    }
-
     try {
       const response = await fetch(`/api/unified-tickets/${id}/updates`)
       const data = await response.json()
@@ -105,15 +131,60 @@ export default function UnifiedTicketDetailPage({
     }
   }
 
-  const handleStatusChange = async () => {
-    if (!ticket || newStatus === ticket.status) return
+  const fetchComments = async () => {
+    try {
+      setCommentsLoading(true)
+      const response = await fetch(`/api/unified-tickets/${id}/comments`)
+      const data = await response.json()
 
+      if (data.success) {
+        setComments(data.comments || [])
+      }
+    } catch (err) {
+      console.error('Error fetching comments:', err)
+    } finally {
+      setCommentsLoading(false)
+    }
+  }
+
+  const fetchUsers = async () => {
+    try {
+      const response = await fetch('/api/users')
+      const data = await response.json()
+
+      if (data.success) {
+        setUsers(data.users || [])
+      }
+    } catch (err) {
+      console.error('Error fetching users:', err)
+    }
+  }
+
+  const handleTitleSave = async (title: string) => {
+    await fetch(`/api/unified-tickets/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title }),
+    })
+    if (ticket) setTicket({ ...ticket, title })
+  }
+
+  const handleDescriptionSave = async (description: string) => {
+    await fetch(`/api/unified-tickets/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ description }),
+    })
+    if (ticket) setTicket({ ...ticket, description })
+  }
+
+  const handleStatusChange = async (status: UnifiedTicketStatus) => {
     setActionLoading(true)
     try {
       const response = await fetch(`/api/unified-tickets/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({ status }),
       })
 
       const data = await response.json()
@@ -128,6 +199,46 @@ export default function UnifiedTicketDetailPage({
       setError(err.message)
     } finally {
       setActionLoading(false)
+    }
+  }
+
+  const handlePriorityChange = async (priority: string) => {
+    setActionLoading(true)
+    try {
+      const response = await fetch(`/api/unified-tickets/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ priority }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        setTicket(data.ticket)
+        setError('')
+      } else {
+        setError(data.error || 'Failed to update priority')
+      }
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const handleAssigneeChange = async (userId: string) => {
+    const assignedTo = userId === 'unassigned' ? undefined : userId
+    await fetch(`/api/unified-tickets/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ assignedTo }),
+    })
+    fetchTicket() // Refresh to get updated assignee name
+  }
+
+  const handleAssignToMe = async () => {
+    if (session?.user?.userId) {
+      await handleAssigneeChange(session.user.userId)
     }
   }
 
@@ -220,330 +331,50 @@ export default function UnifiedTicketDetailPage({
     }
   }
 
-  const getTypeIcon = () => {
-    if (!ticket) return Ticket
+  const handleAddComment = async (content: string, isInternal: boolean) => {
+    const response = await fetch(`/api/unified-tickets/${id}/comments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content, isInternal }),
+    })
 
-    const icons = {
-      ticket: Ticket,
-      incident: AlertTriangle,
-      service_request: HelpCircle,
-      change: Settings,
-      problem: GitBranch,
+    const data = await response.json()
+
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to add comment')
     }
 
-    return icons[ticket.ticketType] || Ticket
+    fetchComments()
   }
 
-  const getStatusBadgeColor = (status: string) => {
-    const colors: Record<string, string> = {
-      new: 'bg-blue-100 text-blue-800',
-      open: 'bg-yellow-100 text-yellow-800',
-      investigating: 'bg-yellow-100 text-yellow-800',
-      pending: 'bg-orange-100 text-orange-800',
-      pending_approval: 'bg-yellow-100 text-yellow-800',
-      approved: 'bg-green-100 text-green-800',
-      rejected: 'bg-red-100 text-red-800',
-      resolved: 'bg-green-100 text-green-800',
-      completed: 'bg-green-100 text-green-800',
-      closed: 'bg-gray-100 text-gray-800',
-      cancelled: 'bg-gray-100 text-gray-800',
-      draft: 'bg-gray-100 text-gray-800',
-      scheduled: 'bg-blue-100 text-blue-800',
-      implementing: 'bg-orange-100 text-orange-800',
+  const handleEditComment = async (commentId: string, newContent: string) => {
+    const response = await fetch(`/api/unified-tickets/${id}/comments/${commentId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: newContent }),
+    })
+
+    const data = await response.json()
+
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to edit comment')
     }
 
-    return colors[status] || 'bg-gray-100 text-gray-800'
+    fetchComments()
   }
 
-  const getPriorityBadgeColor = (priority: string) => {
-    const colors: Record<string, string> = {
-      critical: 'bg-red-100 text-red-800',
-      high: 'bg-orange-100 text-orange-800',
-      medium: 'bg-yellow-100 text-yellow-800',
-      low: 'bg-blue-100 text-blue-800',
+  const handleDeleteComment = async (commentId: string) => {
+    const response = await fetch(`/api/unified-tickets/${id}/comments/${commentId}`, {
+      method: 'DELETE',
+    })
+
+    const data = await response.json()
+
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to delete comment')
     }
 
-    return colors[priority] || 'bg-gray-100 text-gray-800'
-  }
-
-  const renderIncidentDetails = () => {
-    if (ticket?.ticketType !== 'incident') return null
-    const metadata = ticket.metadata as IncidentMetadata
-
-    return (
-      <div className="space-y-4">
-        <h3 className="font-semibold text-lg">Incident Details</h3>
-
-        <div className="grid grid-cols-3 gap-4">
-          <div>
-            <Label className="text-sm text-gray-500">Severity</Label>
-            <p className="font-medium capitalize">{metadata.severity}</p>
-          </div>
-          <div>
-            <Label className="text-sm text-gray-500">Impact</Label>
-            <p className="font-medium capitalize">{metadata.impact}</p>
-          </div>
-          <div>
-            <Label className="text-sm text-gray-500">Urgency</Label>
-            <p className="font-medium capitalize">{metadata.urgency}</p>
-          </div>
-        </div>
-
-        <div>
-          <Label className="text-sm text-gray-500">Affected Services</Label>
-          <div className="flex flex-wrap gap-2 mt-2">
-            {metadata.affectedServices.map((service) => (
-              <Badge key={service} variant="outline">
-                {service}
-              </Badge>
-            ))}
-          </div>
-        </div>
-
-        {metadata.isPublic && (
-          <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              This incident is visible on the public status page
-            </AlertDescription>
-          </Alert>
-        )}
-      </div>
-    )
-  }
-
-  const renderChangeDetails = () => {
-    if (ticket?.ticketType !== 'change') return null
-    const metadata = ticket.metadata as ChangeMetadata
-
-    return (
-      <div className="space-y-4">
-        <h3 className="font-semibold text-lg">Change Details</h3>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <Label className="text-sm text-gray-500">Risk Level</Label>
-            <Badge className={metadata.risk === 'high' ? 'bg-red-100 text-red-800' : metadata.risk === 'medium' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'}>
-              {metadata.risk}
-            </Badge>
-          </div>
-          <div>
-            <Label className="text-sm text-gray-500">Impact</Label>
-            <Badge className={getPriorityBadgeColor(metadata.impact)}>
-              {metadata.impact}
-            </Badge>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <Label className="text-sm text-gray-500">Planned Start</Label>
-            <p className="font-medium">
-              {format(new Date(metadata.plannedStartDate), 'PPp')}
-            </p>
-          </div>
-          <div>
-            <Label className="text-sm text-gray-500">Planned End</Label>
-            <p className="font-medium">
-              {format(new Date(metadata.plannedEndDate), 'PPp')}
-            </p>
-          </div>
-        </div>
-
-        {metadata.actualStartDate && (
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label className="text-sm text-gray-500">Actual Start</Label>
-              <p className="font-medium">
-                {format(new Date(metadata.actualStartDate), 'PPp')}
-              </p>
-            </div>
-            {metadata.actualEndDate && (
-              <div>
-                <Label className="text-sm text-gray-500">Actual End</Label>
-                <p className="font-medium">
-                  {format(new Date(metadata.actualEndDate), 'PPp')}
-                </p>
-              </div>
-            )}
-          </div>
-        )}
-
-        <div>
-          <Label className="text-sm text-gray-500">Backout Plan</Label>
-          <Card className="p-4 mt-2 bg-gray-50">
-            <p className="text-sm whitespace-pre-wrap">{metadata.backoutPlan}</p>
-          </Card>
-        </div>
-
-        {metadata.testPlan && (
-          <div>
-            <Label className="text-sm text-gray-500">Test Plan</Label>
-            <Card className="p-4 mt-2 bg-gray-50">
-              <p className="text-sm whitespace-pre-wrap">{metadata.testPlan}</p>
-            </Card>
-          </div>
-        )}
-
-        {metadata.implementationPlan && (
-          <div>
-            <Label className="text-sm text-gray-500">Implementation Plan</Label>
-            <Card className="p-4 mt-2 bg-gray-50">
-              <p className="text-sm whitespace-pre-wrap">{metadata.implementationPlan}</p>
-            </Card>
-          </div>
-        )}
-
-        {metadata.approvalStatus && (
-          <div>
-            <Label className="text-sm text-gray-500">Approval Status</Label>
-            <div className="flex items-center gap-2 mt-2">
-              {metadata.approvalStatus === 'approved' ? (
-                <CheckCircle2 className="h-5 w-5 text-green-600" />
-              ) : metadata.approvalStatus === 'rejected' ? (
-                <XCircle className="h-5 w-5 text-red-600" />
-              ) : (
-                <Clock className="h-5 w-5 text-yellow-600" />
-              )}
-              <span className="font-medium capitalize">{metadata.approvalStatus}</span>
-            </div>
-            {metadata.approvedBy && (
-              <p className="text-sm text-gray-500 mt-1">
-                by {metadata.approvedByName || metadata.approvedBy} on{' '}
-                {metadata.approvedAt && format(new Date(metadata.approvedAt), 'PPp')}
-              </p>
-            )}
-            {metadata.rejectionReason && (
-              <Alert className="mt-2" variant="destructive">
-                <AlertDescription>{metadata.rejectionReason}</AlertDescription>
-              </Alert>
-            )}
-          </div>
-        )}
-      </div>
-    )
-  }
-
-  const renderServiceRequestDetails = () => {
-    if (ticket?.ticketType !== 'service_request') return null
-    const metadata = ticket.metadata as ServiceRequestMetadata
-
-    return (
-      <div className="space-y-4">
-        <h3 className="font-semibold text-lg">Service Request Details</h3>
-
-        {metadata.serviceId && (
-          <div>
-            <Label className="text-sm text-gray-500">Service</Label>
-            <p className="font-medium">{metadata.serviceId}</p>
-          </div>
-        )}
-
-        {metadata.formData && Object.keys(metadata.formData).length > 0 && (
-          <div>
-            <Label className="text-sm text-gray-500">Form Data</Label>
-            <Card className="p-4 mt-2 bg-gray-50">
-              <dl className="space-y-2">
-                {Object.entries(metadata.formData).map(([key, value]) => (
-                  <div key={key} className="flex justify-between">
-                    <dt className="text-sm font-medium text-gray-600">{key}:</dt>
-                    <dd className="text-sm text-gray-900">{String(value)}</dd>
-                  </div>
-                ))}
-              </dl>
-            </Card>
-          </div>
-        )}
-
-        {metadata.approvalStatus && (
-          <div>
-            <Label className="text-sm text-gray-500">Approval Status</Label>
-            <div className="flex items-center gap-2 mt-2">
-              {metadata.approvalStatus === 'approved' ? (
-                <CheckCircle2 className="h-5 w-5 text-green-600" />
-              ) : metadata.approvalStatus === 'rejected' ? (
-                <XCircle className="h-5 w-5 text-red-600" />
-              ) : (
-                <Clock className="h-5 w-5 text-yellow-600" />
-              )}
-              <span className="font-medium capitalize">{metadata.approvalStatus}</span>
-            </div>
-            {metadata.approvedBy && (
-              <p className="text-sm text-gray-500 mt-1">
-                by {metadata.approvedByName || metadata.approvedBy}
-              </p>
-            )}
-            {metadata.rejectionReason && (
-              <Alert className="mt-2" variant="destructive">
-                <AlertDescription>{metadata.rejectionReason}</AlertDescription>
-              </Alert>
-            )}
-          </div>
-        )}
-      </div>
-    )
-  }
-
-  const renderProblemDetails = () => {
-    if (ticket?.ticketType !== 'problem') return null
-    const metadata = ticket.metadata as ProblemMetadata
-
-    return (
-      <div className="space-y-4">
-        <h3 className="font-semibold text-lg">Problem Details</h3>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <Label className="text-sm text-gray-500">Impact</Label>
-            <p className="font-medium capitalize">{metadata.impact}</p>
-          </div>
-          <div>
-            <Label className="text-sm text-gray-500">Urgency</Label>
-            <p className="font-medium capitalize">{metadata.urgency}</p>
-          </div>
-        </div>
-
-        {metadata.rootCause && (
-          <div>
-            <Label className="text-sm text-gray-500">Root Cause</Label>
-            <Card className="p-4 mt-2 bg-yellow-50 border-yellow-200">
-              <p className="text-sm whitespace-pre-wrap">{metadata.rootCause}</p>
-            </Card>
-          </div>
-        )}
-
-        {metadata.workaround && (
-          <div>
-            <Label className="text-sm text-gray-500">Workaround</Label>
-            <Card className="p-4 mt-2 bg-blue-50 border-blue-200">
-              <p className="text-sm whitespace-pre-wrap">{metadata.workaround}</p>
-            </Card>
-          </div>
-        )}
-
-        {metadata.solution && (
-          <div>
-            <Label className="text-sm text-gray-500">Solution</Label>
-            <Card className="p-4 mt-2 bg-green-50 border-green-200">
-              <p className="text-sm whitespace-pre-wrap">{metadata.solution}</p>
-            </Card>
-          </div>
-        )}
-
-        {metadata.relatedIncidents.length > 0 && (
-          <div>
-            <Label className="text-sm text-gray-500">Related Incidents</Label>
-            <div className="flex flex-wrap gap-2 mt-2">
-              {metadata.relatedIncidents.map((incidentId) => (
-                <Badge key={incidentId} variant="outline">
-                  {incidentId}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    )
+    fetchComments()
   }
 
   const renderApprovalActions = () => {
@@ -551,10 +382,15 @@ export default function UnifiedTicketDetailPage({
     if (ticket.status !== 'pending_approval') return null
 
     return (
-      <Card className="p-6 space-y-4">
-        <h3 className="font-semibold text-lg">Approval Required</h3>
-
-        <div className="space-y-4">
+      <Card className="border-2 border-amber-500/20 bg-amber-50/50 dark:bg-amber-950/20">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <AlertCircle className="w-5 h-5 text-amber-600" />
+            Approval Required
+          </CardTitle>
+          <CardDescription>This {ticket.ticketType === 'change' ? 'change request' : 'service request'} requires your approval</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="approvalNotes">Approval Notes (Optional)</Label>
             <Textarea
@@ -563,11 +399,12 @@ export default function UnifiedTicketDetailPage({
               value={approvalNotes}
               onChange={(e) => setApprovalNotes(e.target.value)}
               rows={3}
+              className="resize-none"
             />
           </div>
 
           <div className="flex gap-2">
-            <Button onClick={handleApprove} disabled={actionLoading} className="flex-1">
+            <Button onClick={handleApprove} disabled={actionLoading} className="flex-1 bg-green-600 hover:bg-green-700">
               {actionLoading ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               ) : (
@@ -598,9 +435,10 @@ export default function UnifiedTicketDetailPage({
               value={rejectionReason}
               onChange={(e) => setRejectionReason(e.target.value)}
               rows={2}
+              className="resize-none"
             />
           </div>
-        </div>
+        </CardContent>
       </Card>
     )
   }
@@ -609,262 +447,337 @@ export default function UnifiedTicketDetailPage({
     if (!ticket || !['incident', 'problem'].includes(ticket.ticketType)) return null
 
     return (
-      <Card className="p-6 space-y-4">
-        <h3 className="font-semibold text-lg">Updates</h3>
+      <Card className="border-2">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp className="w-5 h-5" />
+            Updates & Progress
+          </CardTitle>
+          <CardDescription>Track incident progress and problem resolution</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Add Update Form */}
+          <div className="space-y-4 p-4 rounded-lg border-2 border-dashed bg-accent/50">
+            <div className="space-y-2">
+              <Label htmlFor="updateMessage">New Update</Label>
+              <Textarea
+                id="updateMessage"
+                placeholder="Add a status update..."
+                value={updateMessage}
+                onChange={(e) => setUpdateMessage(e.target.value)}
+                rows={3}
+                className="resize-none"
+              />
+            </div>
 
-        {/* Add Update Form */}
-        <div className="space-y-4 pb-4 border-b">
-          <div className="space-y-2">
-            <Label htmlFor="updateMessage">New Update</Label>
-            <Textarea
-              id="updateMessage"
-              placeholder="Add a status update..."
-              value={updateMessage}
-              onChange={(e) => setUpdateMessage(e.target.value)}
-              rows={3}
-            />
-          </div>
+            <div className="flex items-center gap-4 flex-wrap">
+              <Select value={updateType} onValueChange={setUpdateType}>
+                <SelectTrigger className="w-48">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="general">General Update</SelectItem>
+                  <SelectItem value="status">Status Change</SelectItem>
+                  {ticket.ticketType === 'problem' && (
+                    <>
+                      <SelectItem value="root_cause">Root Cause</SelectItem>
+                      <SelectItem value="workaround">Workaround</SelectItem>
+                      <SelectItem value="solution">Solution</SelectItem>
+                    </>
+                  )}
+                </SelectContent>
+              </Select>
 
-          <div className="flex items-center gap-4">
-            <Select value={updateType} onValueChange={setUpdateType}>
-              <SelectTrigger className="w-48">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="general">General Update</SelectItem>
-                <SelectItem value="status">Status Change</SelectItem>
-                {ticket.ticketType === 'problem' && (
-                  <>
-                    <SelectItem value="root_cause">Root Cause</SelectItem>
-                    <SelectItem value="workaround">Workaround</SelectItem>
-                    <SelectItem value="solution">Solution</SelectItem>
-                  </>
+              <Button onClick={handleAddUpdate} disabled={actionLoading || !updateMessage.trim()}>
+                {actionLoading ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <MessageSquare className="h-4 w-4 mr-2" />
                 )}
-              </SelectContent>
-            </Select>
-
-            <Button onClick={handleAddUpdate} disabled={actionLoading || !updateMessage.trim()}>
-              {actionLoading ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <MessageSquare className="h-4 w-4 mr-2" />
-              )}
-              Post Update
-            </Button>
+                Post Update
+              </Button>
+            </div>
           </div>
-        </div>
 
-        {/* Updates List */}
-        <div className="space-y-4">
-          {updates.length === 0 ? (
-            <p className="text-sm text-gray-500 text-center py-4">No updates yet</p>
-          ) : (
-            updates.map((update) => (
-              <div key={update._id.toString()} className="border-l-4 border-gray-200 pl-4">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="font-medium text-gray-900">{update.createdByName}</p>
-                    <p className="text-xs text-gray-500">
-                      {formatDistanceToNow(new Date(update.createdAt), { addSuffix: true })}
-                    </p>
-                  </div>
-                  <Badge variant="outline" className="text-xs">
-                    {update.updateType.replace(/_/g, ' ')}
-                  </Badge>
-                </div>
-                <p className="text-sm text-gray-700 mt-2 whitespace-pre-wrap">
-                  {update.message}
-                </p>
+          <Separator />
+
+          {/* Updates List */}
+          <div className="space-y-3">
+            {updates.length === 0 ? (
+              <div className="text-center py-8">
+                <TrendingUp className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground">No updates yet</p>
+                <p className="text-xs text-muted-foreground mt-1">Post the first update to track progress</p>
               </div>
-            ))
-          )}
-        </div>
+            ) : (
+              updates.map((update) => (
+                <div key={update._id.toString()} className="p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white text-sm font-semibold">
+                        {update.createdByName?.[0]?.toUpperCase() || 'U'}
+                      </div>
+                      <div>
+                        <p className="font-medium text-sm">{update.createdByName}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatDistanceToNow(new Date(update.createdAt), { addSuffix: true })}
+                        </p>
+                      </div>
+                    </div>
+                    <Badge variant="outline" className="text-xs">
+                      {update.updateType.replace(/_/g, ' ')}
+                    </Badge>
+                  </div>
+                  <p className="text-sm whitespace-pre-wrap leading-relaxed pl-10">
+                    {update.message}
+                  </p>
+                </div>
+              ))
+            )}
+          </div>
+        </CardContent>
       </Card>
     )
   }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading ticket...</p>
+        </div>
       </div>
     )
   }
 
   if (error || !ticket) {
     return (
-      <div className="p-6">
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error || 'Ticket not found'}</AlertDescription>
-        </Alert>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="max-w-md w-full p-6">
+          <Alert variant="destructive" className="border-2">
+            <AlertCircle className="h-5 w-5" />
+            <AlertDescription className="text-base">{error || 'Ticket not found'}</AlertDescription>
+          </Alert>
+          <Button className="w-full mt-4" onClick={() => router.push('/unified-tickets')}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Tickets
+          </Button>
+        </div>
       </div>
     )
   }
 
-  const TypeIcon = getTypeIcon()
+  const activityTimeline = buildActivityTimeline({
+    ticket,
+    comments,
+    includeCreation: true,
+    includeUpdates: true,
+  })
+  const cannedResponseVars = buildCannedResponseVariables(ticket, session)
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div className="flex items-start gap-4">
-          <Button variant="ghost" onClick={() => router.back()}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div>
-            <div className="flex items-center gap-3">
-              <TypeIcon className="h-6 w-6 text-gray-600" />
-              <h1 className="text-3xl font-bold text-gray-900">{ticket.ticketNumber}</h1>
-              <Badge variant="outline" className={getStatusBadgeColor(ticket.status)}>
-                {ticket.status.replace(/_/g, ' ')}
-              </Badge>
-              <Badge variant="outline" className={getPriorityBadgeColor(ticket.priority)}>
-                {ticket.priority}
-              </Badge>
-            </div>
-            <p className="text-xl text-gray-700 mt-2">{ticket.title}</p>
-          </div>
+    <div className="min-h-screen">
+      {/* Sticky Header */}
+      <div className={cn(
+        "sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 transition-all duration-200",
+        isScrolled && "shadow-md"
+      )}>
+        <div className="container max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <TicketHeader
+            ticket={ticket}
+            onTitleSave={handleTitleSave}
+            onStatusChange={handleStatusChange}
+            onPriorityChange={handlePriorityChange}
+            onAssignToMe={handleAssignToMe}
+            currentUserId={session?.user?.userId}
+          />
         </div>
-
-        <Button variant="outline">Edit</Button>
       </div>
 
-      {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
+      {/* Main Content */}
+      <div className="container max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {error && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
 
-      <div className="grid grid-cols-3 gap-6">
-        {/* Main Content */}
-        <div className="col-span-2 space-y-6">
-          {/* Description */}
-          <Card className="p-6">
-            <h3 className="font-semibold text-lg mb-4">Description</h3>
-            <p className="text-gray-700 whitespace-pre-wrap">{ticket.description}</p>
-          </Card>
-
-          {/* Type-Specific Details */}
-          <Card className="p-6">
-            {renderIncidentDetails()}
-            {renderChangeDetails()}
-            {renderServiceRequestDetails()}
-            {renderProblemDetails()}
-          </Card>
-
-          {/* Approval Actions */}
-          {renderApprovalActions()}
-
-          {/* Updates */}
-          {renderUpdatesSection()}
-        </div>
-
-        {/* Sidebar */}
-        <div className="space-y-6">
-          {/* Status Change */}
-          <Card className="p-4">
-            <Label className="text-sm font-medium mb-2 block">Change Status</Label>
-            <div className="space-y-2">
-              <Select value={newStatus} onValueChange={setNewStatus}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {/* Status options would be dynamic based on ticket type */}
-                  <SelectItem value="new">New</SelectItem>
-                  <SelectItem value="open">Open</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="resolved">Resolved</SelectItem>
-                  <SelectItem value="closed">Closed</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button
-                size="sm"
-                onClick={handleStatusChange}
-                disabled={actionLoading || newStatus === ticket.status}
-                className="w-full"
+        {/* Modern Tabbed Interface */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <div className="bg-white dark:bg-gray-800 rounded-lg border-2 p-1 mb-6 shadow-sm">
+            <TabsList className="w-full justify-start bg-transparent gap-2">
+              <TabsTrigger
+                value="overview"
+                className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-md transition-all"
               >
-                Update Status
-              </Button>
-            </div>
-          </Card>
-
-          {/* Details */}
-          <Card className="p-4 space-y-4">
-            <div>
-              <Label className="text-sm text-gray-500">Assigned To</Label>
-              <p className="font-medium">{ticket.assignedToName || ticket.assignedTo || 'Unassigned'}</p>
-            </div>
-
-            <div>
-              <Label className="text-sm text-gray-500">Requester</Label>
-              <p className="font-medium">{ticket.requesterName || ticket.requesterId}</p>
-            </div>
-
-            <div>
-              <Label className="text-sm text-gray-500">Category</Label>
-              <p className="font-medium">{ticket.category}</p>
-            </div>
-
-            <div>
-              <Label className="text-sm text-gray-500">Created</Label>
-              <p className="text-sm">{format(new Date(ticket.createdAt), 'PPp')}</p>
-              <p className="text-xs text-gray-500">
-                {formatDistanceToNow(new Date(ticket.createdAt), { addSuffix: true })}
-              </p>
-            </div>
-
-            {ticket.resolvedAt && (
-              <div>
-                <Label className="text-sm text-gray-500">Resolved</Label>
-                <p className="text-sm">{format(new Date(ticket.resolvedAt), 'PPp')}</p>
-              </div>
-            )}
-
-            {ticket.closedAt && (
-              <div>
-                <Label className="text-sm text-gray-500">Closed</Label>
-                <p className="text-sm">{format(new Date(ticket.closedAt), 'PPp')}</p>
-              </div>
-            )}
-          </Card>
-
-          {/* SLA */}
-          {ticket.sla && (
-            <Card className="p-4 space-y-3">
-              <h4 className="font-semibold text-sm">SLA</h4>
-              <div>
-                <Label className="text-xs text-gray-500">Response Time</Label>
-                <p className="text-sm font-medium">{ticket.sla.responseTime} minutes</p>
-              </div>
-              <div>
-                <Label className="text-xs text-gray-500">Resolution Time</Label>
-                <p className="text-sm font-medium">{ticket.sla.resolutionTime} minutes</p>
-              </div>
-              {ticket.sla.breached && (
-                <Badge variant="destructive" className="w-full justify-center">
-                  SLA Breached
+                <FileText className="h-4 w-4" />
+                Overview
+              </TabsTrigger>
+              <TabsTrigger
+                value="activity"
+                className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-md transition-all"
+              >
+                <Activity className="h-4 w-4" />
+                Activity
+                <Badge variant="secondary" className="ml-1 text-xs">
+                  {activityTimeline.length}
                 </Badge>
-              )}
-            </Card>
-          )}
+              </TabsTrigger>
+              <TabsTrigger
+                value="comments"
+                className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-md transition-all"
+              >
+                <MessageSquare className="h-4 w-4" />
+                Comments
+                <Badge variant="secondary" className="ml-1 text-xs">
+                  {comments.length}
+                </Badge>
+              </TabsTrigger>
+              <TabsTrigger
+                value="attachments"
+                className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-md transition-all"
+              >
+                <Paperclip className="h-4 w-4" />
+                Attachments
+                <Badge variant="secondary" className="ml-1 text-xs">
+                  {ticket.attachments?.length || 0}
+                </Badge>
+              </TabsTrigger>
+              <TabsTrigger
+                value="time"
+                className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-md transition-all"
+              >
+                <ClockIcon className="h-4 w-4" />
+                Time
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
-          {/* Tags */}
-          {ticket.tags && ticket.tags.length > 0 && (
-            <Card className="p-4">
-              <Label className="text-sm font-medium mb-2 block">Tags</Label>
-              <div className="flex flex-wrap gap-2">
-                {ticket.tags.map((tag) => (
-                  <Badge key={tag} variant="outline">
-                    {tag}
-                  </Badge>
-                ))}
+          {/* Overview Tab */}
+          <TabsContent value="overview" className="mt-0">
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+              {/* Left Column: Main Content (60%) */}
+              <div className="lg:col-span-3 space-y-6">
+                {/* Service Catalog Card (if applicable) */}
+                {ticket.ticketType === 'service_request' && (
+                  <ServiceCatalogCard metadata={ticket.metadata as ServiceRequestMetadata} />
+                )}
+
+                {/* SLA Tracking Card - Use Modern Version */}
+                {ticket.sla && (
+                  <ModernSLACard
+                    sla={ticket.sla}
+                    createdAt={ticket.createdAt}
+                  />
+                )}
+
+                <TicketDetailsCard
+                  ticket={ticket}
+                  onDescriptionSave={handleDescriptionSave}
+                  onAssigneeChange={handleAssigneeChange}
+                  users={users}
+                />
+
+                {/* Approval Actions */}
+                {renderApprovalActions()}
+
+                {/* Updates */}
+                {renderUpdatesSection()}
               </div>
-            </Card>
-          )}
-        </div>
+
+              {/* Right Sidebar (40%) - Sticky */}
+              <div className="lg:col-span-2 space-y-6 lg:sticky lg:top-24 lg:self-start">
+                {/* AI Insights Panel */}
+                <AIInsightsPanel
+                  ticketId={ticket._id.toString()}
+                  ticketTitle={ticket.title}
+                  ticketDescription={ticket.description}
+                  ticketCategory={ticket.ticketType}
+                />
+
+                {/* Type-Specific Sections */}
+                <TypeSpecificSections ticket={ticket} />
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* Activity Tab */}
+          <TabsContent value="activity" className="mt-0">
+            <CollapsibleCard
+              title={
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="w-5 h-5" />
+                  Activity Timeline
+                </CardTitle>
+              }
+              description="Complete history of changes and updates"
+              defaultExpanded={true}
+            >
+              <ActivityTimeline events={activityTimeline} />
+            </CollapsibleCard>
+          </TabsContent>
+
+          {/* Comments Tab */}
+          <TabsContent value="comments" className="mt-0">
+            <CollapsibleCard
+              title={
+                <CardTitle className="flex items-center gap-2">
+                  <MessageSquare className="w-5 h-5" />
+                  Comments & Discussion
+                </CardTitle>
+              }
+              description="Collaborate with your team and stakeholders"
+              defaultExpanded={true}
+            >
+              <EnhancedCommentSection
+                ticketId={ticket._id.toString()}
+                comments={comments}
+                onAddComment={handleAddComment}
+                onEditComment={handleEditComment}
+                onDeleteComment={handleDeleteComment}
+                cannedResponseVariables={cannedResponseVars}
+                currentUserId={session?.user?.userId}
+              />
+            </CollapsibleCard>
+          </TabsContent>
+
+          {/* Attachments Tab */}
+          <TabsContent value="attachments" className="mt-0">
+            <CollapsibleCard
+              title={
+                <CardTitle className="flex items-center gap-2">
+                  <Paperclip className="w-5 h-5" />
+                  Attachments & Files
+                </CardTitle>
+              }
+              description="Upload and manage ticket attachments"
+              defaultExpanded={true}
+            >
+              <AttachmentsTab ticketId={ticket._id.toString()} />
+            </CollapsibleCard>
+          </TabsContent>
+
+          {/* Time Tab */}
+          <TabsContent value="time" className="mt-0">
+            <CollapsibleCard
+              title={
+                <CardTitle className="flex items-center gap-2">
+                  <ClockIcon className="w-5 h-5" />
+                  Time Tracking & Billing
+                </CardTitle>
+              }
+              description="Track time spent and billable hours"
+              defaultExpanded={true}
+            >
+              <TimeTrackingTab
+                ticketId={ticket._id.toString()}
+                currentUserId={session?.user?.userId}
+              />
+            </CollapsibleCard>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   )

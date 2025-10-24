@@ -99,7 +99,7 @@ export default function UsersPage() {
     email: '',
     firstName: '',
     lastName: '',
-    role: 'user' as 'admin' | 'technician' | 'user',
+    roleId: '', // RBAC role ID
     title: '',
     department: '',
   })
@@ -107,7 +107,7 @@ export default function UsersPage() {
   const [editUserData, setEditUserData] = useState({
     firstName: '',
     lastName: '',
-    role: 'user' as 'admin' | 'technician' | 'user',
+    roleId: '', // RBAC role ID
     title: '',
     department: '',
     isActive: true,
@@ -180,7 +180,7 @@ export default function UsersPage() {
           email: '',
           firstName: '',
           lastName: '',
-          role: 'user',
+          roleId: '',
           title: '',
           department: '',
         })
@@ -315,7 +315,7 @@ export default function UsersPage() {
     setEditUserData({
       firstName: user.firstName,
       lastName: user.lastName,
-      role: user.role,
+      roleId: user.roleId || '',
       title: user.title || '',
       department: user.department || '',
       isActive: user.isActive,
@@ -513,20 +513,33 @@ export default function UsersPage() {
                     <div className="space-y-2">
                       <Label htmlFor="role">Role</Label>
                       <Select
-                        value={newUser.role}
-                        onValueChange={(value: any) =>
-                          setNewUser({ ...newUser, role: value })
+                        value={newUser.roleId}
+                        onValueChange={(value: string) =>
+                          setNewUser({ ...newUser, roleId: value })
                         }
                       >
                         <SelectTrigger>
-                          <SelectValue />
+                          <SelectValue placeholder="Select a role" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="user">User</SelectItem>
-                          <SelectItem value="technician">Technician</SelectItem>
-                          <SelectItem value="admin">Admin</SelectItem>
+                          {roles
+                            .filter((r) => r.isActive)
+                            .map((role) => (
+                              <SelectItem key={role._id} value={role._id}>
+                                <div className="flex items-center gap-2">
+                                  <div
+                                    className="w-2 h-2 rounded-full"
+                                    style={{ backgroundColor: role.color || '#64748b' }}
+                                  />
+                                  {role.displayName}
+                                </div>
+                              </SelectItem>
+                            ))}
                         </SelectContent>
                       </Select>
+                      <p className="text-xs text-muted-foreground">
+                        {newUser.roleId && roles.find((r) => r._id === newUser.roleId)?.description}
+                      </p>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
@@ -671,7 +684,18 @@ export default function UsersPage() {
                           {user.firstName} {user.lastName}
                         </TableCell>
                         <TableCell>{user.email}</TableCell>
-                        <TableCell>{getRoleBadge(user.role)}</TableCell>
+                        <TableCell>
+                          {user.roleId && roles.length > 0 ? (
+                            <RoleBadge
+                              role={roles.find((r) => r._id === user.roleId)?.name || user.role}
+                              displayName={roles.find((r) => r._id === user.roleId)?.displayName || user.role}
+                              isSystem={roles.find((r) => r._id === user.roleId)?.isSystem || false}
+                              color={roles.find((r) => r._id === user.roleId)?.color}
+                            />
+                          ) : (
+                            getRoleBadge(user.role)
+                          )}
+                        </TableCell>
                         <TableCell className="text-muted-foreground">
                           {user.title || '—'}
                         </TableCell>
@@ -927,20 +951,33 @@ export default function UsersPage() {
             <div className="space-y-2">
               <Label htmlFor="editRole">Role</Label>
               <Select
-                value={editUserData.role}
-                onValueChange={(value: any) =>
-                  setEditUserData({ ...editUserData, role: value })
+                value={editUserData.roleId}
+                onValueChange={(value: string) =>
+                  setEditUserData({ ...editUserData, roleId: value })
                 }
               >
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Select a role" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="user">User</SelectItem>
-                  <SelectItem value="technician">Technician</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
+                  {roles
+                    .filter((r) => r.isActive)
+                    .map((role) => (
+                      <SelectItem key={role._id} value={role._id}>
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="w-2 h-2 rounded-full"
+                            style={{ backgroundColor: role.color || '#64748b' }}
+                          />
+                          {role.displayName}
+                        </div>
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground">
+                {editUserData.roleId && roles.find((r) => r._id === editUserData.roleId)?.description}
+              </p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">

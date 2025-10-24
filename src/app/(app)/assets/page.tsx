@@ -406,48 +406,71 @@ export default function AssetsPage() {
       />
 
       {/* Key Metrics */}
-      <div className="grid gap-4 md:grid-cols-5">
-        <Card className="border-gray-200 bg-gray-50/50">
-          <CardHeader className="pb-3">
-            <CardDescription className="text-gray-700">Total Assets</CardDescription>
-            <CardTitle className="text-3xl text-gray-900">{stats?.total || 0}</CardTitle>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+        <Card className="border-2 shadow-lg hover:shadow-xl transition-all hover:scale-105">
+          <CardHeader className="bg-gradient-to-r from-accent/50 to-accent/20 border-b-2 pb-3">
+            <div className="flex items-center justify-between">
+              <CardDescription className="text-sm font-medium">Total Assets</CardDescription>
+              <div className="p-1.5 bg-gray-500/10 rounded-md">
+                <HardDrive className="h-4 w-4 text-gray-600" />
+              </div>
+            </div>
           </CardHeader>
+          <CardContent className="pt-4">
+            <CardTitle className="text-3xl">{stats?.total || 0}</CardTitle>
+          </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <CardDescription>Active</CardDescription>
-            <CardTitle className="text-3xl flex items-center gap-2">
-              {stats?.active || 0}
-              <CheckCircle2 className="h-5 w-5 text-green-600" />
-            </CardTitle>
+        <Card className="border-2 shadow-lg hover:shadow-xl transition-all hover:scale-105">
+          <CardHeader className="border-b-2 border-dashed pb-3">
+            <div className="flex items-center justify-between">
+              <CardDescription className="text-sm font-medium">Active</CardDescription>
+              <div className="p-1.5 bg-green-500/10 rounded-md">
+                <CheckCircle2 className="h-4 w-4 text-green-600" />
+              </div>
+            </div>
           </CardHeader>
+          <CardContent className="pt-4">
+            <CardTitle className="text-3xl">{stats?.active || 0}</CardTitle>
+          </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <CardDescription>Monitored</CardDescription>
-            <CardTitle className="text-3xl flex items-center gap-2">
-              {monitoredAssets.length}
-              <Server className="h-5 w-5 text-blue-600" />
-            </CardTitle>
+        <Card className="border-2 shadow-lg hover:shadow-xl transition-all hover:scale-105">
+          <CardHeader className="border-b-2 border-dashed pb-3">
+            <div className="flex items-center justify-between">
+              <CardDescription className="text-sm font-medium">Monitored</CardDescription>
+              <div className="p-1.5 bg-blue-500/10 rounded-md">
+                <Server className="h-4 w-4 text-blue-600" />
+              </div>
+            </div>
           </CardHeader>
+          <CardContent className="pt-4">
+            <CardTitle className="text-3xl">{monitoredAssets.length}</CardTitle>
+          </CardContent>
         </Card>
-        <Card className="border-green-200 bg-green-50/50">
-          <CardHeader className="pb-3">
-            <CardDescription className="text-green-700">Online</CardDescription>
-            <CardTitle className="text-3xl text-green-600 flex items-center gap-2">
-              {onlineAssets.length}
-              <Wifi className="h-5 w-5" />
-            </CardTitle>
+        <Card className="border-2 shadow-lg hover:shadow-xl transition-all hover:scale-105 border-green-500/30 bg-green-50/50 dark:bg-green-950/20">
+          <CardHeader className="border-b-2 border-dashed pb-3">
+            <div className="flex items-center justify-between">
+              <CardDescription className="text-sm font-medium text-green-700 dark:text-green-400">Online</CardDescription>
+              <div className="p-1.5 bg-green-500/20 rounded-md">
+                <Wifi className="h-4 w-4 text-green-600" />
+              </div>
+            </div>
           </CardHeader>
+          <CardContent className="pt-4">
+            <CardTitle className="text-3xl text-green-600">{onlineAssets.length}</CardTitle>
+          </CardContent>
         </Card>
-        <Card className="border-orange-200 bg-orange-50/50">
-          <CardHeader className="pb-3">
-            <CardDescription className="text-orange-700">Offline</CardDescription>
-            <CardTitle className="text-3xl text-orange-600 flex items-center gap-2">
-              {offlineAssets.length}
-              <AlertTriangle className="h-5 w-5" />
-            </CardTitle>
+        <Card className="border-2 shadow-lg hover:shadow-xl transition-all hover:scale-105 border-orange-500/30 bg-orange-50/50 dark:bg-orange-950/20">
+          <CardHeader className="border-b-2 border-dashed pb-3">
+            <div className="flex items-center justify-between">
+              <CardDescription className="text-sm font-medium text-orange-700 dark:text-orange-400">Offline</CardDescription>
+              <div className="p-1.5 bg-orange-500/20 rounded-md">
+                <AlertTriangle className="h-4 w-4 text-orange-600" />
+              </div>
+            </div>
           </CardHeader>
+          <CardContent className="pt-4">
+            <CardTitle className="text-3xl text-orange-600">{offlineAssets.length}</CardTitle>
+          </CardContent>
         </Card>
       </div>
 
@@ -467,7 +490,7 @@ export default function AssetsPage() {
         {/* Assets Tab */}
         <TabsContent value="assets" className="space-y-4">
           {/* Search and Filters Toolbar */}
-          <Card>
+          <Card className="border-2 shadow-lg">
             <CardContent className="pt-6">
               <div className="flex flex-col gap-4">
                 {/* Primary Search Bar */}
@@ -621,39 +644,39 @@ export default function AssetsPage() {
           )}
 
           {/* Assets Table */}
-          <Card>
-            <CardHeader>
+          <Card className="border-2 shadow-lg">
+            <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10 border-b-2">
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle>
+                  <CardTitle className="text-lg font-semibold">
                     {filteredCount} Asset{filteredCount !== 1 ? 's' : ''}
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-sm mt-1">
                     Manage your IT infrastructure inventory
                   </CardDescription>
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-12">
+                    <TableRow className="bg-gradient-to-r from-accent/30 to-accent/10 hover:bg-gradient-to-r hover:from-accent/40 hover:to-accent/20">
+                      <TableHead className="w-12 font-semibold">
                         <Checkbox
                           checked={selectAll}
                           onCheckedChange={handleSelectAll}
                         />
                       </TableHead>
-                      <TableHead>Asset Tag</TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Category</TableHead>
-                      <TableHead>Location</TableHead>
-                      <TableHead>Assigned To</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Monitoring</TableHead>
-                      <TableHead>Last Seen</TableHead>
-                      <TableHead className="w-12">Actions</TableHead>
+                      <TableHead className="font-semibold">Asset Tag</TableHead>
+                      <TableHead className="font-semibold">Name</TableHead>
+                      <TableHead className="font-semibold">Category</TableHead>
+                      <TableHead className="font-semibold">Location</TableHead>
+                      <TableHead className="font-semibold">Assigned To</TableHead>
+                      <TableHead className="font-semibold">Status</TableHead>
+                      <TableHead className="font-semibold">Monitoring</TableHead>
+                      <TableHead className="font-semibold">Last Seen</TableHead>
+                      <TableHead className="w-12 font-semibold">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -698,7 +721,7 @@ export default function AssetsPage() {
                       </TableRow>
                     ) : (
                       assets.map((asset) => (
-                        <TableRow key={asset._id} className="hover:bg-muted/50">
+                        <TableRow key={asset._id} className="hover:bg-accent/30 transition-all border-b-2 border-dashed">
                           <TableCell>
                             <Checkbox
                               checked={selectedAssets.includes(asset._id)}
@@ -707,17 +730,17 @@ export default function AssetsPage() {
                           </TableCell>
                           <TableCell>
                             <Link href={`/assets/${asset._id}`}>
-                              <Badge variant="outline" className="font-mono hover:bg-primary/10 cursor-pointer">
+                              <Badge variant="outline" className="font-mono font-semibold hover:bg-primary/10 cursor-pointer border-2 bg-primary/5">
                                 {asset.assetTag}
                               </Badge>
                             </Link>
                           </TableCell>
                           <TableCell>
-                            <Link href={`/assets/${asset._id}`} className="hover:underline">
+                            <Link href={`/assets/${asset._id}`} className="hover:text-primary transition-colors">
                               <div>
-                                <p className="font-medium">{asset.name}</p>
+                                <p className="font-semibold">{asset.name}</p>
                                 {asset.manufacturer && asset.model && (
-                                  <p className="text-xs text-muted-foreground">
+                                  <p className="text-xs text-muted-foreground mt-0.5">
                                     {asset.manufacturer} {asset.model}
                                   </p>
                                 )}

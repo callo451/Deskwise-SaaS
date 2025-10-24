@@ -361,11 +361,11 @@ export default function KnowledgeBasePage() {
   // ============================================================================
 
   const renderCategorySidebar = () => (
-    <Card className="h-fit sticky top-6">
-      <CardHeader>
-        <CardTitle className="text-base">Categories</CardTitle>
+    <Card className="h-fit sticky top-6 border-2 shadow-lg">
+      <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10 border-b-2">
+        <CardTitle className="text-base font-semibold">Categories</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-4">
         <div className="space-y-1">
           <Button
             variant={selectedCategory === '' ? 'secondary' : 'ghost'}
@@ -412,28 +412,28 @@ export default function KnowledgeBasePage() {
   // ============================================================================
 
   const renderListView = () => (
-    <Card>
-      <CardHeader>
+    <Card className="border-2 shadow-lg">
+      <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10 border-b-2">
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>
+            <CardTitle className="text-lg font-semibold">
               {filteredCount} Article{filteredCount !== 1 ? 's' : ''}
             </CardTitle>
-            <CardDescription>Manage your knowledge base articles</CardDescription>
+            <CardDescription className="text-sm mt-1">Manage your knowledge base articles</CardDescription>
           </div>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-0">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead>Title</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Visibility</TableHead>
-                <TableHead>Stats</TableHead>
-                <TableHead>Updated</TableHead>
-                <TableHead className="w-12">Actions</TableHead>
+              <TableRow className="bg-gradient-to-r from-accent/30 to-accent/10 hover:bg-gradient-to-r hover:from-accent/40 hover:to-accent/20">
+                <TableHead className="font-semibold">Title</TableHead>
+                <TableHead className="font-semibold">Category</TableHead>
+                <TableHead className="font-semibold">Visibility</TableHead>
+                <TableHead className="font-semibold">Stats</TableHead>
+                <TableHead className="font-semibold">Updated</TableHead>
+                <TableHead className="w-12 font-semibold">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -482,11 +482,11 @@ export default function KnowledgeBasePage() {
                 </TableRow>
               ) : (
                 sortedArticles.map((article) => (
-                  <TableRow key={article._id} className="hover:bg-muted/50">
+                  <TableRow key={article._id} className="hover:bg-accent/30 transition-all border-b-2 border-dashed">
                     <TableCell>
-                      <Link href={`/knowledge/${article._id}`} className="hover:underline">
+                      <Link href={`/knowledge/${article._id}`} className="hover:text-primary transition-colors">
                         <div>
-                          <p className="font-medium">{article.title}</p>
+                          <p className="font-semibold">{article.title}</p>
                           <div className="flex items-center gap-2 mt-1">
                             {article.recordingMetadata ? (
                               <Badge variant="outline" className="text-xs flex items-center gap-1 bg-purple-50 text-purple-700 border-purple-300">
@@ -720,52 +720,75 @@ export default function KnowledgeBasePage() {
       />
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-5">
-        <Card className="border-purple-200 bg-purple-50/50">
-          <CardHeader className="pb-3">
-            <CardDescription className="text-purple-700">Total Articles</CardDescription>
-            <CardTitle className="text-3xl text-purple-900">{stats?.total || 0}</CardTitle>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+        <Card className="border-2 shadow-lg hover:shadow-xl transition-all hover:scale-105 border-purple-500/30 bg-purple-50/50 dark:bg-purple-950/20">
+          <CardHeader className="bg-gradient-to-r from-purple-500/10 to-purple-500/5 border-b-2 pb-3">
+            <div className="flex items-center justify-between">
+              <CardDescription className="text-sm font-medium text-purple-700 dark:text-purple-400">Total Articles</CardDescription>
+              <div className="p-1.5 bg-purple-500/20 rounded-md">
+                <BookOpen className="h-4 w-4 text-purple-600" />
+              </div>
+            </div>
           </CardHeader>
+          <CardContent className="pt-4">
+            <CardTitle className="text-3xl text-purple-900 dark:text-purple-100">{stats?.total || 0}</CardTitle>
+          </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardDescription>Public</CardDescription>
-            <CardTitle className="text-3xl flex items-center gap-2">
-              {stats?.public || 0}
-              <Eye className="h-5 w-5 text-blue-600" />
-            </CardTitle>
+        <Card className="border-2 shadow-lg hover:shadow-xl transition-all hover:scale-105">
+          <CardHeader className="border-b-2 border-dashed pb-3">
+            <div className="flex items-center justify-between">
+              <CardDescription className="text-sm font-medium">Public</CardDescription>
+              <div className="p-1.5 bg-blue-500/10 rounded-md">
+                <Eye className="h-4 w-4 text-blue-600" />
+              </div>
+            </div>
           </CardHeader>
+          <CardContent className="pt-4">
+            <CardTitle className="text-3xl">{stats?.public || 0}</CardTitle>
+          </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardDescription>Internal</CardDescription>
-            <CardTitle className="text-3xl flex items-center gap-2">
-              {stats?.internal || 0}
-              <Lock className="h-5 w-5 text-gray-600" />
-            </CardTitle>
+        <Card className="border-2 shadow-lg hover:shadow-xl transition-all hover:scale-105">
+          <CardHeader className="border-b-2 border-dashed pb-3">
+            <div className="flex items-center justify-between">
+              <CardDescription className="text-sm font-medium">Internal</CardDescription>
+              <div className="p-1.5 bg-gray-500/10 rounded-md">
+                <Lock className="h-4 w-4 text-gray-600" />
+              </div>
+            </div>
           </CardHeader>
+          <CardContent className="pt-4">
+            <CardTitle className="text-3xl">{stats?.internal || 0}</CardTitle>
+          </CardContent>
         </Card>
 
-        <Card className="border-blue-200 bg-blue-50/50">
-          <CardHeader className="pb-3">
-            <CardDescription className="text-blue-700">Total Views</CardDescription>
-            <CardTitle className="text-3xl text-blue-600 flex items-center gap-2">
-              {stats?.totalViews || 0}
-              <Eye className="h-5 w-5" />
-            </CardTitle>
+        <Card className="border-2 shadow-lg hover:shadow-xl transition-all hover:scale-105 border-blue-500/30 bg-blue-50/50 dark:bg-blue-950/20">
+          <CardHeader className="border-b-2 border-dashed pb-3">
+            <div className="flex items-center justify-between">
+              <CardDescription className="text-sm font-medium text-blue-700 dark:text-blue-400">Total Views</CardDescription>
+              <div className="p-1.5 bg-blue-500/20 rounded-md">
+                <Eye className="h-4 w-4 text-blue-600" />
+              </div>
+            </div>
           </CardHeader>
+          <CardContent className="pt-4">
+            <CardTitle className="text-3xl text-blue-600">{stats?.totalViews || 0}</CardTitle>
+          </CardContent>
         </Card>
 
-        <Card className="border-green-200 bg-green-50/50">
-          <CardHeader className="pb-3">
-            <CardDescription className="text-green-700">Most Helpful</CardDescription>
-            <CardTitle className="text-3xl text-green-600 flex items-center gap-2">
-              {mostHelpfulArticle?.helpful || 0}
-              <ThumbsUp className="h-5 w-5" />
-            </CardTitle>
+        <Card className="border-2 shadow-lg hover:shadow-xl transition-all hover:scale-105 border-green-500/30 bg-green-50/50 dark:bg-green-950/20">
+          <CardHeader className="border-b-2 border-dashed pb-3">
+            <div className="flex items-center justify-between">
+              <CardDescription className="text-sm font-medium text-green-700 dark:text-green-400">Most Helpful</CardDescription>
+              <div className="p-1.5 bg-green-500/20 rounded-md">
+                <ThumbsUp className="h-4 w-4 text-green-600" />
+              </div>
+            </div>
           </CardHeader>
+          <CardContent className="pt-4">
+            <CardTitle className="text-3xl text-green-600">{mostHelpfulArticle?.helpful || 0}</CardTitle>
+          </CardContent>
         </Card>
       </div>
 
@@ -777,7 +800,7 @@ export default function KnowledgeBasePage() {
         {/* Main Content Area */}
         <div className="flex-1 space-y-4">
           {/* Search and Filters Toolbar */}
-          <Card>
+          <Card className="border-2 shadow-lg">
             <CardContent className="pt-6">
               <div className="flex flex-col gap-4">
                 {/* Primary Search Bar */}

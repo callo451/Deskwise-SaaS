@@ -61,13 +61,16 @@ export type TicketPriority = 'low' | 'medium' | 'high' | 'critical'
 
 export interface TicketAttachment {
   id: string
+  ticketId: string
   filename: string
   originalFilename: string
+  fileSize: number // bytes
   contentType: string
-  size: number // bytes
+  s3Key: string // S3 object key for storage
   uploadedBy: string
+  uploadedByName: string
   uploadedAt: Date
-  url: string
+  url?: string // Legacy field - use presigned URLs instead
   thumbnailUrl?: string // For images
 }
 
@@ -127,6 +130,78 @@ export interface TimeEntry {
   isRunning: boolean // true if timer is currently active
   createdAt: Date
   updatedAt: Date
+}
+
+// Unified Ticket Time Tracking
+export interface UnifiedTicketTimeEntry {
+  _id: ObjectId
+  ticketId: string
+  orgId: string
+  userId: string
+  userName: string
+  description: string
+  hours: number
+  minutes: number
+  isBillable: boolean
+  startTime?: Date
+  endTime?: Date
+  createdAt: Date
+}
+
+export interface ActiveTimer {
+  _id: ObjectId
+  ticketId: string
+  orgId: string
+  userId: string
+  startTime: Date
+  description?: string
+}
+
+// ============================================
+// Unified Time Tracking (Tickets + Projects)
+// ============================================
+
+export type TimeEntryType = 'ticket' | 'project'
+
+export interface TimeEntry extends BaseEntity {
+  // WHAT: Link to either ticket OR project (mutually exclusive)
+  type: TimeEntryType
+  ticketId?: string               // For ticket time
+  ticketNumber?: string           // Denormalized for performance
+  projectId?: string              // For project time
+  projectName?: string            // Denormalized for performance
+  projectTaskId?: string          // Optional task link
+  projectTaskName?: string        // Denormalized for performance
+
+  // WHO
+  userId: string
+  userName: string
+
+  // WHEN & HOW LONG
+  description: string
+  startTime?: Date                // For timer-based entries
+  endTime?: Date                  // For timer-based entries
+  hours: number                   // Manual hours
+  minutes: number                 // Manual minutes
+  totalMinutes: number            // Calculated total (for queries)
+
+  // BILLING
+  isBillable: boolean
+  isRunning: boolean              // True if timer is active
+
+  // METADATA
+  source: 'manual' | 'timer' | 'import' | 'auto'
+  tags?: string[]
+}
+
+export interface ActiveTimeTracker extends BaseEntity {
+  type: TimeEntryType
+  ticketId?: string
+  projectId?: string
+  projectTaskId?: string
+  userId: string
+  startTime: Date
+  description?: string
 }
 
 // ============================================
@@ -416,6 +491,12 @@ export interface UnifiedTicket extends BaseEntity {
   parentTicketId?: string // For hierarchical relationships
   childTicketIds?: string[] // Sub-tickets
 
+  // Project integration
+  projectId?: string // Link ticket to project
+  projectName?: string // Denormalized for performance
+  projectTaskId?: string // Link to specific project task
+  projectTaskName?: string // Denormalized for performance
+
   // Attachments and comments
   attachments?: TicketAttachment[]
 
@@ -459,6 +540,23 @@ export interface UnifiedTicketUpdate {
   isPublic?: boolean // For public incident updates
 }
 
+// Unified ticket comment (for all ticket types)
+export interface UnifiedTicketComment {
+  _id: ObjectId
+  ticketId: string
+  orgId: string
+  content: string
+  isInternal: boolean // Internal comments only visible to technicians/admins
+  createdBy: string
+  createdByName: string
+  createdByAvatar?: string
+  createdAt: Date
+  updatedAt?: Date
+  editedBy?: string
+  editedByName?: string
+  isDeleted?: boolean // Soft delete flag
+}
+
 // Workflow configuration type
 export interface TicketTypeWorkflow {
   type: TicketType
@@ -484,6 +582,8 @@ export interface CreateTicketInput {
   assignedTo?: string
   tags?: string[]
   linkedAssets?: string[]
+  projectId?: string // Link to project
+  projectTaskId?: string // Link to specific task
 }
 
 export interface CreateIncidentInput {
@@ -511,6 +611,8 @@ export interface CreateServiceRequestInput {
   serviceId?: string
   formData?: Record<string, any>
   tags?: string[]
+  projectId?: string // Link to project
+  projectTaskId?: string // Link to specific task
 }
 
 export interface CreateChangeInput {
@@ -560,22 +662,150 @@ export type CreateUnifiedTicketInput =
 export type ProjectStatus = 'planning' | 'active' | 'on_hold' | 'completed' | 'cancelled'
 export type TaskStatus = 'todo' | 'in_progress' | 'review' | 'completed'
 
+// Phase 1 Enhancements
+export type ProjectStage = 'pre_initiation' | 'initiation' | 'planning' | 'execution' | 'monitoring_control' | 'closure'
+export type ProjectHealth = 'green' | 'amber' | 'red'
+export type ProjectMethodology = 'waterfall' | 'agile' | 'hybrid' | 'prince2' | 'custom'
+export type ProjectType = 'internal' | 'client' | 'product' | 'service'
+
 export interface Project extends BaseEntity {
   projectNumber: string
   name: string
+  code?: string // Short code for project (e.g., "WEB-REDESIGN")
   description: string
   status: ProjectStatus
+
+  // Phase 1: New fields (backward compatible)
+  stage?: ProjectStage // Project lifecycle stage
+  health?: ProjectHealth // Overall project health
+  healthScore?: number // Numeric health score 0-100
+  healthMetrics?: {
+    overall: {
+      health: ProjectHealth
+      score: number
+      timestamp: Date
+    }
+    schedule: {
+      health: ProjectHealth
+      score: number
+      details: {
+        timeElapsed: number
+        progressCompleted: number
+        variance: number
+        daysRemaining: number
+        estimatedCompletionDate?: Date
+      }
+    }
+    budget: {
+      health: ProjectHealth
+      score: number
+      details: {
+        budgetTotal: number
+        budgetSpent: number
+        budgetRemaining: number
+        spentPercentage: number
+        progressPercentage: number
+        variance: number
+        burnRate: number
+        projectedSpend: number
+      }
+    }
+    scope: {
+      health: ProjectHealth
+      score: number
+      details: {
+        totalChanges: number
+        approvedChanges: number
+        pendingChanges: number
+        rejectedChanges: number
+        scopeCreep: number
+      }
+    }
+    risk: {
+      health: ProjectHealth
+      score: number
+      details: {
+        totalRisks: number
+        highRisks: number
+        mediumRisks: number
+        lowRisks: number
+        openRisks: number
+        mitigatedRisks: number
+      }
+    }
+    quality: {
+      health: ProjectHealth
+      score: number
+      details: {
+        totalTasks: number
+        completedTasks: number
+        overdueTasksCount: number
+        overdueTasks: string[]
+        averageTaskCompletionRate: number
+        defectRate: number
+      }
+    }
+  }
+  methodology?: ProjectMethodology
+  type?: ProjectType
+
+  // Hierarchy
+  portfolioId?: string // Parent portfolio
+  parentProjectId?: string // For sub-projects
+
+  // Client/MSP
   clientId?: string
+  contractId?: string // Link to contract/agreement
+  clientVisible?: boolean // Show in client portal
+
+  // Team
   projectManager: string
   teamMembers: string[]
-  startDate: Date
-  endDate: Date
+
+  // Scheduling (keep old fields for backward compatibility)
+  startDate: Date // Legacy field
+  endDate: Date // Legacy field
+  plannedStartDate?: Date // New field
+  plannedEndDate?: Date // New field
   actualStartDate?: Date
   actualEndDate?: Date
+  baselineStartDate?: Date // Locked baseline
+  baselineEndDate?: Date
+
+  // Financial
   budget?: number
   usedBudget?: number
+  forecastBudget?: number
+
+  // Progress
   progress: number // 0-100
+
+  // Metadata
   tags: string[]
+
+  // EVM (Earned Value Management) - calculated fields
+  evm?: {
+    plannedValue: number // PV (budgeted cost of work scheduled)
+    earnedValue: number // EV (budgeted cost of work performed)
+    actualCost: number // AC (actual cost of work performed)
+    costVariance: number // CV = EV - AC
+    scheduleVariance: number // SV = EV - PV
+    costPerformanceIndex: number // CPI = EV / AC
+    schedulePerformanceIndex: number // SPI = EV / PV
+    estimateAtCompletion: number // EAC
+    estimateToComplete: number // ETC
+    varianceAtCompletion: number // VAC = BAC - EAC
+  }
+}
+
+// Task dependency types
+export type DependencyType = 'finish_to_start' | 'start_to_start' | 'finish_to_finish' | 'start_to_finish'
+export type TaskType = 'task' | 'milestone' | 'summary'
+
+export interface TaskDependency {
+  taskId: string
+  type: DependencyType
+  lag: number // Days of lag/lead time (negative for lead)
 }
 
 export interface ProjectTask {
@@ -585,15 +815,594 @@ export interface ProjectTask {
   title: string
   description: string
   status: TaskStatus
+
+  // Phase 1: New fields
+  taskNumber?: string // TSK-001
+  wbsCode?: string // Work Breakdown Structure code (e.g., "1.2.3")
+  level?: number // Indentation level (0 = root)
+  parentTaskId?: string // Parent task for hierarchy
+  taskType?: TaskType
+  isCriticalPath?: boolean // Is this task on critical path?
+  slack?: number // Float time in hours (0 for critical path tasks)
+
+  // Assignment
   assignedTo?: string
-  dueDate?: Date
+  assignedToName?: string
+
+  // Scheduling
+  plannedStartDate?: Date
+  plannedEndDate?: Date
+  dueDate?: Date // Legacy field
+  actualStartDate?: Date
+  actualEndDate?: Date
   completedAt?: Date
-  dependencies: string[] // Array of task IDs
+
+  // Effort
   estimatedHours?: number
   actualHours?: number
+  remainingHours?: number
+
+  // Dependencies (enhanced)
+  dependencies: string[] | TaskDependency[] // Support both old and new format
+
+  // Progress
+  percentComplete?: number // 0-100
+
+  // Metadata
+  tags?: string[]
+  priority?: 'low' | 'medium' | 'high' | 'critical'
+
+  // Timestamps
   createdBy: string
   createdAt: Date
   updatedAt: Date
+}
+
+// Milestone Types
+export type MilestoneType = 'gate' | 'deliverable' | 'event' | 'decision_point'
+export type MilestoneStatus = 'planned' | 'at_risk' | 'achieved' | 'missed' | 'cancelled'
+export type GateType = 'initiation' | 'planning' | 'stage_boundary' | 'closure'
+export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'conditional'
+export type DeliverableStatus = 'not_started' | 'in_progress' | 'completed'
+export type GateArtifactStatus = 'pending' | 'submitted' | 'approved'
+
+export interface GateArtifact {
+  name: string
+  required: boolean
+  documentId?: string
+  status: GateArtifactStatus
+}
+
+export interface MilestoneDeliverable {
+  name: string
+  description: string
+  status: DeliverableStatus
+  acceptedBy?: string
+  acceptedAt?: Date
+}
+
+export interface ProjectMilestone extends BaseEntity {
+  projectId: string
+
+  // Identification
+  name: string
+  description: string
+  type: MilestoneType
+
+  // Scheduling
+  plannedDate: Date
+  baselineDate?: Date
+  actualDate?: Date
+
+  // Status
+  status: MilestoneStatus
+
+  // Gate Review (PRINCE2/PMBOK)
+  isGate: boolean
+  gateType?: GateType
+  gateArtifacts?: GateArtifact[]
+  approvalRequired: boolean
+  approvers?: string[]
+  approvalStatus?: ApprovalStatus
+  approvedBy?: string
+  approvedAt?: Date
+  rejectionReason?: string
+
+  // Deliverables
+  deliverables?: MilestoneDeliverable[]
+
+  // Dependencies
+  dependsOnMilestones: string[]
+  dependsOnTasks: string[]
+
+  // Progress
+  progressWeight: number
+
+  // Notifications
+  reminderDays: number
+  notifyUsers: string[]
+}
+
+// ============================================
+// Project Management - Phase 1 New Entities
+// ============================================
+
+// Portfolio
+export type PortfolioType = 'strategic' | 'operational' | 'client' | 'internal'
+export type PortfolioStatus = 'active' | 'planning' | 'archived'
+
+export interface PortfolioKPI {
+  name: string
+  target: number
+  actual: number
+  unit: string // e.g., "%", "$", "hours"
+}
+
+export interface Portfolio extends BaseEntity {
+  // Basic Info
+  name: string
+  code: string // Short code: "DT2025"
+  description: string
+  type: PortfolioType
+
+  // MSP Specifics
+  clientId?: string // MSP mode: Client portfolio
+
+  // Strategy Alignment
+  strategicObjectives: string[] // Link to org strategic goals
+  kpis: PortfolioKPI[]
+
+  // Portfolio Management
+  status: PortfolioStatus
+  manager: string // User ID
+  stakeholders: string[] // User IDs
+
+  // Financial
+  totalBudget: number
+  allocatedBudget: number // Sum of project budgets
+  spentBudget: number // Sum of project actuals
+
+  // Health & Metrics
+  projectCount: number // Calculated
+  healthScore: number // 0-100, calculated
+  riskScore: number // 0-100, calculated
+
+  // Settings
+  allowedProjectManagers: string[] // Restrict who can create projects
+  requiresApproval: boolean // Gate review required
+  approvalWorkflow?: string // Workflow ID
+
+  // Soft delete
+  isActive: boolean
+}
+
+// Resource Allocation
+export type AllocationType = 'full_time' | 'part_time' | 'as_needed'
+export type AllocationStatus = 'planned' | 'active' | 'completed' | 'removed'
+
+export interface ProjectResourceAllocation extends BaseEntity {
+  projectId: string
+
+  // Resource
+  userId: string
+  userName: string // Denormalized
+
+  // Role on Project
+  role: string // 'Developer', 'QA', 'Designer', etc.
+  isPrimary: boolean // Primary resource for this role
+
+  // Allocation
+  allocationType: AllocationType
+  allocationPercentage: number // 0-100 (50 = half time)
+  hoursPerWeek: number // Calculated from percentage
+
+  // Schedule
+  startDate: Date
+  endDate: Date
+
+  // Cost
+  hourlyRate?: number // Billing rate for this project
+  costRate?: number // Internal cost rate
+
+  // Skills
+  requiredSkills: string[] // Skills needed for this role
+  userSkills: string[] // Skills user has
+  skillMatch: number // 0-100 match percentage
+
+  // Status
+  status: AllocationStatus
+}
+
+// RAID - Risk Register
+export type RiskProbability = 'very_low' | 'low' | 'medium' | 'high' | 'very_high'
+export type RiskImpact = 'very_low' | 'low' | 'medium' | 'high' | 'very_high'
+export type RiskResponseStrategy = 'avoid' | 'mitigate' | 'transfer' | 'accept'
+export type RiskStatus = 'identified' | 'assessed' | 'mitigated' | 'closed' | 'occurred'
+
+export interface ProjectRisk extends BaseEntity {
+  projectId: string
+
+  // Identification
+  riskNumber: string // RSK-001
+  title: string
+  description: string
+  category: string // 'technical', 'resource', 'budget', 'schedule'
+
+  // Assessment
+  probability: RiskProbability
+  probabilityScore: number // 1-5
+  impact: RiskImpact
+  impactScore: number // 1-5
+  riskScore: number // probability × impact (1-25)
+
+  // Response Strategy
+  responseStrategy: RiskResponseStrategy
+  mitigationPlan?: string
+  contingencyPlan?: string
+
+  // Ownership
+  owner: string // User ID responsible for managing
+
+  // Status
+  status: RiskStatus
+
+  // Dates
+  identifiedDate: Date
+  targetResolutionDate?: Date
+  closedDate?: Date
+}
+
+// RAID - Issue Register
+export type IssueSeverity = 'low' | 'medium' | 'high' | 'critical'
+export type IssuePriority = 'low' | 'medium' | 'high' | 'critical'
+export type IssueStatus = 'open' | 'investigating' | 'resolved' | 'closed'
+
+export interface ProjectIssue extends BaseEntity {
+  projectId: string
+
+  // Identification
+  issueNumber: string // ISS-001
+  title: string
+  description: string
+  category: string
+
+  // Severity
+  severity: IssueSeverity
+  priority: IssuePriority
+
+  // Resolution
+  status: IssueStatus
+  resolution?: string
+
+  // Ownership
+  reportedBy: string
+  assignedTo?: string
+
+  // Related Items
+  relatedRiskId?: string // If issue came from realized risk
+  relatedTaskIds: string[] // Affected tasks
+
+  // Dates
+  reportedDate: Date
+  targetResolutionDate?: Date
+  resolvedDate?: Date
+  closedDate?: Date
+}
+
+// RAID - Decision Log
+export type DecisionStatus = 'pending' | 'approved' | 'implemented' | 'reversed'
+
+export interface DecisionOption {
+  option: string
+  pros: string[]
+  cons: string[]
+  cost?: number
+  timeline?: string
+}
+
+export interface ProjectDecision extends BaseEntity {
+  projectId: string
+
+  // Identification
+  decisionNumber: string // DEC-001
+  title: string
+  description: string
+  category: string
+
+  // Decision
+  options: DecisionOption[]
+  selectedOption: string
+  rationale: string
+
+  // Governance
+  decisionMaker: string // User ID
+  stakeholdersConsulted: string[] // User IDs
+  approvalRequired: boolean
+  approvedBy?: string
+  approvedAt?: Date
+
+  // Impact
+  impactedAreas: string[] // 'scope', 'schedule', 'budget', 'quality'
+
+  // Status
+  status: DecisionStatus
+
+  // Dates
+  decisionDate: Date
+  implementationDate?: Date
+}
+
+// RAID - Assumptions Log
+export type AssumptionStatus = 'active' | 'validated' | 'invalidated' | 'expired'
+
+export interface ProjectAssumption extends BaseEntity {
+  projectId: string
+
+  // Identification
+  assumptionNumber: string // ASM-001
+  title: string
+  description: string
+  category: string
+
+  // Validation
+  validated: boolean
+  validatedBy?: string
+  validatedAt?: Date
+  validationNotes?: string
+
+  // Risk Assessment
+  riskIfInvalid: string // What happens if assumption proves false
+  impactIfInvalid: RiskImpact
+
+  // Ownership
+  owner: string // User ID
+
+  // Status
+  status: AssumptionStatus
+
+  // Dates
+  dateRecorded: Date
+  expiryDate?: Date
+}
+
+// Project Documents
+export type DocumentType =
+  | 'charter'
+  | 'plan'
+  | 'wbs'
+  | 'schedule'
+  | 'budget'
+  | 'risk_register'
+  | 'quality_plan'
+  | 'communication_plan'
+  | 'scope_statement'
+  | 'lessons_learned'
+  | 'other'
+
+export type DocumentStatus = 'draft' | 'review' | 'approved' | 'archived'
+export type DocumentVisibility = 'team' | 'stakeholders' | 'client' | 'private'
+
+export interface ProjectDocument extends BaseEntity {
+  projectId: string
+
+  // Identification
+  name: string
+  description?: string
+  type: DocumentType
+
+  // File Info
+  filename: string
+  fileSize: number // bytes
+  contentType: string // MIME type
+  s3Key: string // S3 storage key
+  url?: string // Presigned URL (temporary)
+
+  // Versioning
+  version: number
+  previousVersionId?: string // Previous version document ID
+  isLatestVersion: boolean
+
+  // Categorization
+  category: string
+  tags: string[]
+
+  // Access Control
+  visibility: DocumentVisibility
+
+  // Metadata
+  uploadedBy: string
+  uploadedByName: string
+  uploadedAt: Date
+
+  // Status
+  status: DocumentStatus
+  approvedBy?: string
+  approvedAt?: Date
+}
+
+// Project Time Entry
+export type TimeEntryStatus = 'draft' | 'submitted' | 'approved' | 'rejected' | 'invoiced'
+
+export interface ProjectTimeEntry extends BaseEntity {
+  projectId: string
+  taskId?: string // Optional: link to specific task
+
+  // User
+  userId: string
+  userName: string // Denormalized
+
+  // Time
+  date: Date // Work date
+  startTime?: Date // Optional: specific start time
+  endTime?: Date // Optional: specific end time
+  hours: number // Total hours
+  minutes: number // Additional minutes
+  totalMinutes: number // Calculated: hours * 60 + minutes
+
+  // Description
+  description: string
+  activityType: string // 'development', 'testing', 'meetings', etc.
+
+  // Billing
+  isBillable: boolean
+  hourlyRate?: number // Rate for this entry
+  billableAmount?: number // Calculated: totalMinutes / 60 * hourlyRate
+
+  // Status
+  status: TimeEntryStatus
+  approvedBy?: string
+  approvedAt?: Date
+  rejectionReason?: string
+
+  // Invoice Link
+  invoiceId?: string // If already invoiced
+  invoiceLineItemId?: string
+}
+
+// Project Change Request
+export type ChangeRequestType = 'scope' | 'schedule' | 'budget' | 'resources' | 'quality' | 'other'
+export type ChangeRequestStatus =
+  | 'draft'
+  | 'submitted'
+  | 'under_review'
+  | 'approved'
+  | 'rejected'
+  | 'implemented'
+
+export interface ScheduleImpact {
+  delayDays: number
+  affectedMilestones: string[]
+  affectedTasks: string[]
+}
+
+export interface BudgetImpact {
+  additionalCost: number
+  costSavings: number
+  netImpact: number
+}
+
+export interface ApprovalVote {
+  userId: string
+  vote: 'approve' | 'reject' | 'conditional'
+  comments?: string
+  votedAt: Date
+}
+
+export interface ProjectChangeRequest extends BaseEntity {
+  projectId: string
+
+  // Identification
+  changeNumber: string // PCR-001
+  title: string
+  description: string
+
+  // Change Type
+  changeType: ChangeRequestType
+
+  // Impact Assessment
+  scopeImpact?: string
+  scheduleImpact?: ScheduleImpact
+  budgetImpact?: BudgetImpact
+  resourceImpact?: string
+  qualityImpact?: string
+
+  // Justification
+  businessJustification: string
+  alternatives?: string
+  riskOfNotImplementing?: string
+
+  // Status
+  status: ChangeRequestStatus
+  priority: 'low' | 'medium' | 'high' | 'critical'
+
+  // Approval
+  approvers: string[] // User IDs
+  approvalVotes: ApprovalVote[]
+  finalDecision?: 'approved' | 'rejected'
+  decisionDate?: Date
+  decisionBy?: string
+  decisionRationale?: string
+
+  // Implementation
+  implementationPlan?: string
+  implementedDate?: Date
+  implementedBy?: string
+
+  // Timestamps
+  requestedBy: string
+  requestedDate: Date
+}
+
+// Project Template
+export type TemplateTaskData = {
+  title: string
+  description: string
+  level: number
+  wbsCode: string
+  estimatedHours: number
+  taskType: TaskStatus
+  dependencies: string[] // WBS codes of dependencies
+}
+
+export type TemplateMilestoneData = {
+  name: string
+  description: string
+  type: MilestoneType
+  isGate: boolean
+  daysFromStart: number // Offset from project start
+}
+
+export type TemplateRoleData = {
+  role: string
+  allocationType: string
+  allocationPercentage: number
+}
+
+export type TemplateDocumentData = {
+  name: string
+  type: DocumentType
+  templateS3Key?: string // Template file to copy
+}
+
+export interface ProjectTemplate extends BaseEntity {
+  // Identification
+  name: string
+  description: string
+  category: string
+  icon?: string
+  color?: string
+
+  // Template Data
+  templateData: {
+    // Project fields to copy
+    type: ProjectType
+    category: string
+    methodology: ProjectMethodology
+    tags: string[]
+
+    // Tasks to create
+    tasks: TemplateTaskData[]
+
+    // Milestones to create
+    milestones: TemplateMilestoneData[]
+
+    // Default roles to add
+    roles: TemplateRoleData[]
+
+    // Documents to include
+    documents: TemplateDocumentData[]
+  }
+
+  // Usage
+  isSystemTemplate: boolean // Built-in vs custom
+  usageCount: number
+  lastUsedAt?: Date
+
+  // Visibility
+  isPublic: boolean // Available to all in org
+
+  // Status
+  isActive: boolean
 }
 
 // ============================================

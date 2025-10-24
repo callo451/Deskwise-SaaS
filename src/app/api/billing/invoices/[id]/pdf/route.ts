@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { InvoiceService } from '@/lib/services/invoices'
 import { ClientService } from '@/lib/services/clients'
-import { OrganizationService } from '@/lib/services/organization'
+import { OrganizationService } from '@/lib/services/organizations'
 import { renderToStream } from '@react-pdf/renderer'
 import { InvoicePDF } from '@/lib/pdf/invoice-template'
 

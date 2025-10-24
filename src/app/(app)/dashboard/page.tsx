@@ -107,7 +107,7 @@ export default function DashboardPage() {
       color: (stats?.sla.compliance || 100) >= 95 ? 'text-green-600' : 'text-orange-600',
       bgColor: (stats?.sla.compliance || 100) >= 95 ? 'bg-green-100 dark:bg-green-900/20' : 'bg-orange-100 dark:bg-orange-900/20',
       trend: stats?.sla.compliance || 100,
-      link: '/tickets?filter=sla',
+      link: '/unified-tickets?filter=sla',
     },
     {
       title: 'MTTR (Incidents)',
@@ -150,7 +150,7 @@ export default function DashboardPage() {
       icon: Users,
       color: 'text-blue-600',
       bgColor: 'bg-blue-100 dark:bg-blue-900/20',
-      link: '/tickets?assignedTo=me',
+      link: '/unified-tickets?assignedTo=me',
     },
     {
       title: 'Overdue Tickets',
@@ -159,7 +159,7 @@ export default function DashboardPage() {
       icon: AlertTriangle,
       color: stats?.tickets.overdue === 0 ? 'text-green-600' : 'text-red-600',
       bgColor: stats?.tickets.overdue === 0 ? 'bg-green-100 dark:bg-green-900/20' : 'bg-red-100 dark:bg-red-900/20',
-      link: '/tickets?filter=overdue',
+      link: '/unified-tickets?filter=overdue',
     },
     {
       title: 'Unassigned',
@@ -168,7 +168,7 @@ export default function DashboardPage() {
       icon: Clock,
       color: 'text-purple-600',
       bgColor: 'bg-purple-100 dark:bg-purple-900/20',
-      link: '/tickets?filter=unassigned',
+      link: '/unified-tickets?filter=unassigned',
     },
     {
       title: 'Open Tickets',
@@ -177,7 +177,7 @@ export default function DashboardPage() {
       icon: Ticket,
       color: 'text-orange-600',
       bgColor: 'bg-orange-100 dark:bg-orange-900/20',
-      link: '/tickets',
+      link: '/unified-tickets',
     },
   ]
 
@@ -194,17 +194,25 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 p-6">
       {/* Welcome Section */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
+        className="flex items-center justify-between"
       >
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground mt-2">
-          Welcome back, {session?.user?.firstName}! Here's your ITSM overview.
-        </p>
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-primary/10 rounded-lg">
+            <Activity className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold">Dashboard</h1>
+            <p className="text-muted-foreground text-base mt-1">
+              Welcome back, {session?.user?.firstName}! Here's your ITSM overview.
+            </p>
+          </div>
+        </div>
       </motion.div>
 
       {/* Primary KPIs - Critical ITSM Metrics */}
@@ -217,16 +225,18 @@ export default function DashboardPage() {
         {kpiCards.map((card) => (
           <motion.div key={card.title} variants={item}>
             <Link href={card.link}>
-              <Card className="hover:shadow-lg transition-all duration-300 cursor-pointer border-2 hover:border-primary/50">
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
-                  <div className={`p-2 rounded-lg ${card.bgColor}`}>
-                    <card.icon className={`w-5 h-5 ${card.color}`} />
+              <Card className="border-2 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer hover:border-primary/50 hover:scale-105">
+                <CardHeader className="bg-gradient-to-r from-accent/50 to-accent/20 border-b-2 pb-3">
+                  <div className="flex flex-row items-center justify-between">
+                    <CardTitle className="text-sm font-semibold">{card.title}</CardTitle>
+                    <div className={`p-2.5 rounded-lg ${card.bgColor}`}>
+                      <card.icon className={`w-5 h-5 ${card.color}`} />
+                    </div>
                   </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pt-4">
                   <div className="text-3xl font-bold">{card.value}</div>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-xs text-muted-foreground mt-2">
                     {card.description}
                   </p>
                 </CardContent>
@@ -246,16 +256,18 @@ export default function DashboardPage() {
         {ticketCards.map((card) => (
           <motion.div key={card.title} variants={item}>
             <Link href={card.link}>
-              <Card className="hover:shadow-md transition-shadow cursor-pointer">
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
-                  <div className={`p-2 rounded-lg ${card.bgColor}`}>
-                    <card.icon className={`w-4 h-4 ${card.color}`} />
+              <Card className="border-2 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer hover:border-primary/50 hover:scale-105">
+                <CardHeader className="border-b-2 border-dashed pb-3">
+                  <div className="flex flex-row items-center justify-between">
+                    <CardTitle className="text-sm font-semibold">{card.title}</CardTitle>
+                    <div className={`p-2 rounded-lg ${card.bgColor}`}>
+                      <card.icon className={`w-4 h-4 ${card.color}`} />
+                    </div>
                   </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pt-4">
                   <div className="text-2xl font-bold">{card.value}</div>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-xs text-muted-foreground mt-2">
                     {card.description}
                   </p>
                 </CardContent>
@@ -294,37 +306,41 @@ export default function DashboardPage() {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5, delay: 0.3 }}
         >
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Zap className="w-5 h-5 text-yellow-500" />
-                Quick Actions
-              </CardTitle>
-              <CardDescription>Common tasks and shortcuts</CardDescription>
+          <Card className="border-2 shadow-lg">
+            <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10 border-b-2">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-yellow-500/10 rounded-md">
+                  <Zap className="w-5 h-5 text-yellow-600" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg">Quick Actions</CardTitle>
+                  <CardDescription className="text-sm">Common tasks and shortcuts</CardDescription>
+                </div>
+              </div>
             </CardHeader>
-            <CardContent className="space-y-2">
+            <CardContent className="space-y-2 pt-4">
               <Link href="/tickets/new">
-                <button className="w-full text-left p-3 rounded-md hover:bg-accent transition-colors">
-                  <p className="font-medium">Create New Ticket</p>
-                  <p className="text-sm text-muted-foreground">Report an issue or request</p>
+                <button className="w-full text-left p-3 rounded-lg border-2 border-dashed hover:border-primary/50 hover:bg-accent/30 transition-all">
+                  <p className="font-semibold">Create New Ticket</p>
+                  <p className="text-sm text-muted-foreground mt-0.5">Report an issue or request</p>
                 </button>
               </Link>
               <Link href="/schedule/new">
-                <button className="w-full text-left p-3 rounded-md hover:bg-accent transition-colors">
-                  <p className="font-medium">Schedule Appointment</p>
-                  <p className="text-sm text-muted-foreground">Book time for maintenance</p>
+                <button className="w-full text-left p-3 rounded-lg border-2 border-dashed hover:border-primary/50 hover:bg-accent/30 transition-all">
+                  <p className="font-semibold">Schedule Appointment</p>
+                  <p className="text-sm text-muted-foreground mt-0.5">Book time for maintenance</p>
                 </button>
               </Link>
               <Link href="/kb">
-                <button className="w-full text-left p-3 rounded-md hover:bg-accent transition-colors">
-                  <p className="font-medium">Search Knowledge Base</p>
-                  <p className="text-sm text-muted-foreground">Find solutions and guides</p>
+                <button className="w-full text-left p-3 rounded-lg border-2 border-dashed hover:border-primary/50 hover:bg-accent/30 transition-all">
+                  <p className="font-semibold">Search Knowledge Base</p>
+                  <p className="text-sm text-muted-foreground mt-0.5">Find solutions and guides</p>
                 </button>
               </Link>
               <Link href="/assets">
-                <button className="w-full text-left p-3 rounded-md hover:bg-accent transition-colors">
-                  <p className="font-medium">View Assets</p>
-                  <p className="text-sm text-muted-foreground">Manage IT infrastructure</p>
+                <button className="w-full text-left p-3 rounded-lg border-2 border-dashed hover:border-primary/50 hover:bg-accent/30 transition-all">
+                  <p className="font-semibold">View Assets</p>
+                  <p className="text-sm text-muted-foreground mt-0.5">Manage IT infrastructure</p>
                 </button>
               </Link>
             </CardContent>
@@ -337,15 +353,19 @@ export default function DashboardPage() {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5, delay: 0.4 }}
         >
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Activity className="w-5 h-5 text-blue-500" />
-                Recent Activity
-              </CardTitle>
-              <CardDescription>Latest updates across your organization</CardDescription>
+          <Card className="border-2 shadow-lg">
+            <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10 border-b-2">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-blue-500/10 rounded-md">
+                  <Activity className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg">Recent Activity</CardTitle>
+                  <CardDescription className="text-sm">Latest updates across your organization</CardDescription>
+                </div>
+              </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-4">
               {loading ? (
                 <p className="text-sm text-muted-foreground">Loading activity...</p>
               ) : stats?.recentActivity && stats.recentActivity.length > 0 ? (
@@ -406,52 +426,64 @@ export default function DashboardPage() {
         transition={{ duration: 0.5, delay: 0.5 }}
         className="grid gap-6 md:grid-cols-3"
       >
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm flex items-center gap-2">
-              <FolderKanban className="w-4 h-4" />
-              Active Projects
-            </CardTitle>
+        <Card className="border-2 shadow-lg hover:shadow-xl transition-all hover:scale-105">
+          <CardHeader className="border-b-2 border-dashed pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <div className="p-1.5 bg-indigo-500/10 rounded-md">
+                  <FolderKanban className="w-4 h-4 text-indigo-600" />
+                </div>
+                Active Projects
+              </CardTitle>
+            </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-4">
             <div className="text-2xl font-bold">{stats?.projects.active || 0}</div>
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="text-xs text-muted-foreground mt-2">
               {stats?.projects.total || 0} total projects
             </p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Users className="w-4 h-4" />
-              Team Members
-            </CardTitle>
+        <Card className="border-2 shadow-lg hover:shadow-xl transition-all hover:scale-105">
+          <CardHeader className="border-b-2 border-dashed pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <div className="p-1.5 bg-purple-500/10 rounded-md">
+                  <Users className="w-4 h-4 text-purple-600" />
+                </div>
+                Team Members
+              </CardTitle>
+            </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-4">
             <div className="text-2xl font-bold">{stats?.users.active || 0}</div>
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="text-xs text-muted-foreground mt-2">
               {stats?.users.total || 0} total users
             </p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4" />
-              Platform Status
-            </CardTitle>
+        <Card className="border-2 shadow-lg hover:shadow-xl transition-all hover:scale-105">
+          <CardHeader className="border-b-2 border-dashed pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <div className="p-1.5 bg-green-500/10 rounded-md">
+                  <CheckCircle2 className="w-4 h-4 text-green-600" />
+                </div>
+                Platform Status
+              </CardTitle>
+            </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-4">
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs">System Health</span>
-                <span className="text-xs text-green-600 font-medium">✓ Operational</span>
+              <div className="flex items-center justify-between p-2 rounded-lg bg-green-500/5 border border-green-500/20">
+                <span className="text-xs font-medium">System Health</span>
+                <span className="text-xs text-green-600 font-semibold">✓ Operational</span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs">Auto-Refresh</span>
-                <span className="text-xs text-blue-600 font-medium">→ 30s</span>
+              <div className="flex items-center justify-between p-2 rounded-lg bg-blue-500/5 border border-blue-500/20">
+                <span className="text-xs font-medium">Auto-Refresh</span>
+                <span className="text-xs text-blue-600 font-semibold">→ 30s</span>
               </div>
             </div>
           </CardContent>

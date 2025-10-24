@@ -82,6 +82,35 @@ export class UnifiedTicketService {
       metadata,
     }
 
+    // Handle project linking if provided
+    if ('projectId' in input && input.projectId) {
+      ticket.projectId = input.projectId
+
+      // Fetch project name for denormalization
+      const project = await db.collection('projects').findOne({
+        _id: new ObjectId(input.projectId),
+        orgId,
+      })
+      if (project) {
+        ticket.projectName = project.name
+      }
+
+      // Handle task linking if provided
+      if ('projectTaskId' in input && input.projectTaskId) {
+        ticket.projectTaskId = input.projectTaskId
+
+        // Fetch task name for denormalization
+        const task = await db.collection('project_tasks').findOne({
+          _id: new ObjectId(input.projectTaskId),
+          projectId: input.projectId,
+          orgId,
+        })
+        if (task) {
+          ticket.projectTaskName = task.title
+        }
+      }
+    }
+
     await collection.insertOne(ticket)
     return ticket
   }

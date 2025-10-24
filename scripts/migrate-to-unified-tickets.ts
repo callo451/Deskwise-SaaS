@@ -100,14 +100,23 @@ async function migrateToUnifiedTickets(options: MigrationOptions) {
 
     for (const ticket of tickets) {
       try {
+        // Skip tickets without orgId (test/demo data)
+        if (!ticket.orgId) {
+          console.log(`  ⚠️  Skipping ticket ${ticket._id} - missing orgId (demo data)`)
+          continue
+        }
+
         const unified = {
           ...ticket,
           ticketType: 'ticket' as const,
+          // Map old 'subject' field to 'title' if needed
+          title: ticket.title || ticket.subject || 'Untitled Ticket',
+          ticketNumber: ticket.ticketNumber || `TKT-${ticket._id.toString().slice(-8)}`,
           legacyNumber: ticket.ticketNumber,
-          requesterId: ticket.requesterId,
+          requesterId: ticket.requesterId || ticket.createdBy,
           requesterName: ticket.requesterName,
           metadata: {
-            type: 'ticket' as const,
+            ticketType: 'ticket' as const,
             linkedTickets: ticket.linkedTickets || [],
           },
         }
@@ -116,7 +125,7 @@ async function migrateToUnifiedTickets(options: MigrationOptions) {
         stats.tickets++
       } catch (error: any) {
         stats.errors++
-        stats.errorMessages.push(`Ticket ${ticket.ticketNumber}: ${error.message}`)
+        stats.errorMessages.push(`Ticket ${ticket.ticketNumber || ticket._id}: ${error.message}`)
       }
     }
     console.log(`  ✅ Migrated ${stats.tickets} tickets`)
@@ -127,6 +136,12 @@ async function migrateToUnifiedTickets(options: MigrationOptions) {
 
     for (const incident of incidents) {
       try {
+        // Skip incidents without orgId
+        if (!incident.orgId) {
+          console.log(`  ⚠️  Skipping incident ${incident._id} - missing orgId`)
+          continue
+        }
+
         const unified = {
           _id: incident._id,
           orgId: incident.orgId,
@@ -134,8 +149,8 @@ async function migrateToUnifiedTickets(options: MigrationOptions) {
           updatedAt: incident.updatedAt,
           createdBy: incident.createdBy,
 
-          ticketNumber: incident.incidentNumber,
-          legacyNumber: incident.incidentNumber,
+          ticketNumber: incident.incidentNumber || incident.displayId || `INC-${incident._id.toString().slice(-8)}`,
+          legacyNumber: incident.incidentNumber || incident.displayId,
           ticketType: 'incident' as const,
           title: incident.title,
           description: incident.description,
@@ -190,6 +205,12 @@ async function migrateToUnifiedTickets(options: MigrationOptions) {
 
     for (const sr of serviceRequests) {
       try {
+        // Skip service requests without orgId
+        if (!sr.orgId) {
+          console.log(`  ⚠️  Skipping service request ${sr._id} - missing orgId`)
+          continue
+        }
+
         const unified = {
           _id: sr._id,
           orgId: sr.orgId,
@@ -197,7 +218,7 @@ async function migrateToUnifiedTickets(options: MigrationOptions) {
           updatedAt: sr.updatedAt,
           createdBy: sr.createdBy,
 
-          ticketNumber: sr.requestNumber,
+          ticketNumber: sr.requestNumber || `SR-${sr._id.toString().slice(-8)}`,
           legacyNumber: sr.requestNumber,
           ticketType: 'service_request' as const,
           title: sr.title,
@@ -253,6 +274,12 @@ async function migrateToUnifiedTickets(options: MigrationOptions) {
 
     for (const change of changes) {
       try {
+        // Skip changes without orgId
+        if (!change.orgId) {
+          console.log(`  ⚠️  Skipping change ${change._id} - missing orgId`)
+          continue
+        }
+
         const unified = {
           _id: change._id,
           orgId: change.orgId,
@@ -260,7 +287,7 @@ async function migrateToUnifiedTickets(options: MigrationOptions) {
           updatedAt: change.updatedAt,
           createdBy: change.createdBy,
 
-          ticketNumber: change.changeNumber,
+          ticketNumber: change.changeNumber || `CHG-${change._id.toString().slice(-8)}`,
           legacyNumber: change.changeNumber,
           ticketType: 'change' as const,
           title: change.title,
@@ -325,6 +352,12 @@ async function migrateToUnifiedTickets(options: MigrationOptions) {
 
     for (const problem of problems) {
       try {
+        // Skip problems without orgId
+        if (!problem.orgId) {
+          console.log(`  ⚠️  Skipping problem ${problem._id} - missing orgId`)
+          continue
+        }
+
         const unified = {
           _id: problem._id,
           orgId: problem.orgId,
@@ -332,7 +365,7 @@ async function migrateToUnifiedTickets(options: MigrationOptions) {
           updatedAt: problem.updatedAt,
           createdBy: problem.createdBy,
 
-          ticketNumber: problem.problemNumber,
+          ticketNumber: problem.problemNumber || `PRB-${problem._id.toString().slice(-8)}`,
           legacyNumber: problem.problemNumber,
           ticketType: 'problem' as const,
           title: problem.title,

@@ -59,6 +59,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { ProductFormWizard } from '@/components/products/product-form-wizard'
+import { cn } from '@/lib/utils'
 
 interface Product {
   _id: string
@@ -228,61 +229,82 @@ export default function ProductsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 flex flex-col gap-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Product Catalog</h1>
-          <p className="text-muted-foreground mt-1">
-            Manage your services, hardware, and software products
-          </p>
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-amber-500/10 rounded-lg">
+            <Package className="h-6 w-6 text-amber-600" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold">Product Catalog</h1>
+            <p className="text-muted-foreground text-base mt-1">
+              Manage your services, hardware, and software products
+            </p>
+          </div>
         </div>
-        <Button onClick={handleCreate}>
-          <Plus className="w-4 h-4 mr-2" />
+        <Button size="lg" className="gap-2" onClick={handleCreate}>
+          <Plus className="w-5 h-5" />
           Add Product
         </Button>
       </div>
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Products</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
+        <Card className="border-2 shadow-lg hover:shadow-xl transition-all hover:scale-105">
+          <CardHeader className="bg-gradient-to-r from-amber-500/10 to-amber-500/5 border-b-2 pb-3">
+            <div className="flex items-center justify-between">
+              <CardDescription className="text-sm font-medium">Total Products</CardDescription>
+              <div className="p-1.5 bg-amber-500/10 rounded-md">
+                <Package className="h-4 w-4 text-amber-600" />
+              </div>
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{products.length}</div>
+          <CardContent className="pt-4">
+            <div className="text-3xl font-bold">{products.length}</div>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active</CardTitle>
-            <ShoppingCart className="h-4 w-4 text-green-600" />
+        <Card className="border-2 shadow-lg hover:shadow-xl transition-all hover:scale-105 border-green-500/30 bg-green-50/50 dark:bg-green-950/20">
+          <CardHeader className="border-b-2 border-dashed pb-3">
+            <div className="flex items-center justify-between">
+              <CardDescription className="text-sm font-medium text-green-700 dark:text-green-400">Active</CardDescription>
+              <div className="p-1.5 bg-green-500/20 rounded-md">
+                <ShoppingCart className="h-4 w-4 text-green-600" />
+              </div>
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
+          <CardContent className="pt-4">
+            <div className="text-3xl font-bold text-green-600">
               {products.filter((p) => p.isActive).length}
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Recurring</CardTitle>
-            <TrendingUp className="h-4 w-4 text-blue-600" />
+        <Card className="border-2 shadow-lg hover:shadow-xl transition-all hover:scale-105 border-blue-500/30 bg-blue-50/50 dark:bg-blue-950/20">
+          <CardHeader className="border-b-2 border-dashed pb-3">
+            <div className="flex items-center justify-between">
+              <CardDescription className="text-sm font-medium text-blue-700 dark:text-blue-400">Recurring</CardDescription>
+              <div className="p-1.5 bg-blue-500/20 rounded-md">
+                <TrendingUp className="h-4 w-4 text-blue-600" />
+              </div>
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
+          <CardContent className="pt-4">
+            <div className="text-3xl font-bold text-blue-600">
               {products.filter((p) => p.type === 'recurring').length}
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Most Used</CardTitle>
-            <Tag className="h-4 w-4 text-purple-600" />
+        <Card className="border-2 shadow-lg hover:shadow-xl transition-all hover:scale-105 border-purple-500/30 bg-purple-50/50 dark:bg-purple-950/20">
+          <CardHeader className="border-b-2 border-dashed pb-3">
+            <div className="flex items-center justify-between">
+              <CardDescription className="text-sm font-medium text-purple-700 dark:text-purple-400">Most Used</CardDescription>
+              <div className="p-1.5 bg-purple-500/20 rounded-md">
+                <Tag className="h-4 w-4 text-purple-600" />
+              </div>
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
+          <CardContent className="pt-4">
+            <div className="text-3xl font-bold text-purple-600">
               {products.length > 0
                 ? Math.max(...products.map((p) => p.timesUsed || 0))
                 : 0}
@@ -292,9 +314,9 @@ export default function ProductsPage() {
       </div>
 
       {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Filters</CardTitle>
+      <Card className="border-2 shadow-lg">
+        <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10 border-b-2">
+          <CardTitle className="text-lg font-semibold">Filters</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-4">
@@ -360,10 +382,10 @@ export default function ProductsPage() {
       </Card>
 
       {/* Products Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Products ({filteredProducts.length})</CardTitle>
-          <CardDescription>
+      <Card className="border-2 shadow-lg">
+        <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10 border-b-2">
+          <CardTitle className="text-lg font-semibold">Products ({filteredProducts.length})</CardTitle>
+          <CardDescription className="text-sm mt-1">
             Manage your product and service catalog
           </CardDescription>
         </CardHeader>
@@ -377,15 +399,15 @@ export default function ProductsPage() {
           ) : (
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>SKU</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Price</TableHead>
-                  <TableHead>Unit</TableHead>
-                  <TableHead>Used</TableHead>
-                  <TableHead>Status</TableHead>
+                <TableRow className="bg-gradient-to-r from-accent/30 to-accent/10 hover:bg-gradient-to-r hover:from-accent/40 hover:to-accent/20">
+                  <TableHead className="font-semibold">SKU</TableHead>
+                  <TableHead className="font-semibold">Name</TableHead>
+                  <TableHead className="font-semibold">Category</TableHead>
+                  <TableHead className="font-semibold">Type</TableHead>
+                  <TableHead className="font-semibold">Price</TableHead>
+                  <TableHead className="font-semibold">Unit</TableHead>
+                  <TableHead className="font-semibold">Used</TableHead>
+                  <TableHead className="font-semibold">Status</TableHead>
                   <TableHead></TableHead>
                 </TableRow>
               </TableHeader>

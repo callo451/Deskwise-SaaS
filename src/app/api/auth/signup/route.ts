@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { UserService } from '@/lib/services/users'
 import { OrganizationService } from '@/lib/services/organizations'
+import { RoleService } from '@/lib/services/roles'
 import { z } from 'zod'
 
 const signupSchema = z.object({
@@ -25,16 +26,35 @@ export async function POST(request: NextRequest) {
       mode: validatedData.mode,
     })
 
-    // Create admin user
+    const orgId = organization._id.toString()
+
+    // Automatically seed RBAC roles for the new organization
+    let systemAdminRoleId: string | null = null
+    try {
+      await RoleService.seedDefaultRoles(orgId)
+      console.log(`✅ RBAC roles seeded for organization: ${validatedData.organizationName}`)
+
+      // Get the System Administrator role ID
+      systemAdminRoleId = await RoleService.getDefaultRoleId(orgId, 'system_administrator')
+    } catch (error) {
+      console.error('Failed to seed RBAC roles during signup:', error)
+      // Continue with user creation even if role seeding fails
+      // User will be created with legacy 'admin' role
+    }
+
+    // Create admin user with System Administrator role
     const user = await UserService.createUser({
       email: validatedData.email,
       password: validatedData.password,
       firstName: validatedData.firstName,
       lastName: validatedData.lastName,
-      role: 'admin', // First user is always admin
-      orgId: organization._id.toString(),
+      role: 'admin', // Legacy role for backward compatibility
+      roleId: systemAdminRoleId || undefined, // RBAC role ID (System Administrator)
+      orgId,
       createdBy: 'system',
     })
+
+    console.log(`✅ First user created as System Administrator for ${validatedData.organizationName}`)
 
     return NextResponse.json({
       success: true,

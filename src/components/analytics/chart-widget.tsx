@@ -42,11 +42,11 @@ export function ChartWidget({
   }
 
   return (
-    <Card className={cn('overflow-hidden', className)}>
-      <CardHeader className="pb-4">
+    <Card className={cn('border-2 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden', className)}>
+      <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10 border-b-2 pb-4">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <CardTitle className="text-lg">{title}</CardTitle>
+            <CardTitle className="text-lg font-semibold">{title}</CardTitle>
             {description && (
               <CardDescription className="mt-1">{description}</CardDescription>
             )}

@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next/auth'
+import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { UnifiedTicketService } from '@/lib/services/unified-tickets'
 import { TicketType } from '@/lib/types'
-import { requireAnyPermission, createPermissionError } from '@/lib/middleware/permissions'
+import { requireAnyPermission, createPermissionError, createMultiplePermissionError } from '@/lib/middleware/permissions'
 
 /**
  * GET /api/unified-tickets/stats - Get statistics for unified tickets
@@ -17,18 +17,15 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check permissions
+    // Check permissions - unified ticketing uses tickets.view for all types
     const hasPermission = await requireAnyPermission(session, [
       'tickets.view.all',
-      'incidents.view',
-      'changes.view',
-      'service_requests.view',
-      'problems.view',
+      'tickets.view.own',
     ])
 
     if (!hasPermission) {
       return NextResponse.json(
-        { error: createPermissionError('tickets.view') },
+        { error: createMultiplePermissionError(['tickets.view.all', 'tickets.view.own'], false) },
         { status: 403 }
       )
     }

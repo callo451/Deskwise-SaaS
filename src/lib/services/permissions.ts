@@ -313,15 +313,65 @@ export class PermissionService {
       createPerm('assets', 'remoteControl', 'Use remote control on assets')
     )
 
-    // Projects
+    // Projects (Enhanced for Project Management Uplift - Phase 1)
     permissions.push(
+      // Basic project permissions
       createPerm('projects', 'view', 'View projects', 'own'),
+      createPerm('projects', 'view', 'View assigned projects', 'assigned'),
       createPerm('projects', 'view', 'View all projects', 'all'),
       createPerm('projects', 'create', 'Create projects'),
-      createPerm('projects', 'edit', 'Edit projects', 'own'),
+      createPerm('projects', 'edit', 'Edit own projects', 'own'),
       createPerm('projects', 'edit', 'Edit all projects', 'all'),
       createPerm('projects', 'delete', 'Delete projects'),
-      createPerm('projects', 'manage', 'Manage project tasks and milestones')
+      createPerm('projects', 'manage', 'Full project management (tasks, milestones, resources)'),
+
+      // Portfolio permissions
+      createPerm('portfolios', 'view', 'View all portfolios', 'all'),
+      createPerm('portfolios', 'view', 'View portfolios where user is manager', 'own'),
+      createPerm('portfolios', 'create', 'Create new portfolios'),
+      createPerm('portfolios', 'edit', 'Edit all portfolios', 'all'),
+      createPerm('portfolios', 'edit', 'Edit own portfolios', 'own'),
+      createPerm('portfolios', 'delete', 'Delete portfolios'),
+      createPerm('portfolios', 'manage', 'Full portfolio management (rebalancing, prioritization)'),
+
+      // Task permissions
+      createPerm('projects', 'tasks', 'View project tasks', 'view'),
+      createPerm('projects', 'tasks', 'Create tasks', 'create'),
+      createPerm('projects', 'tasks', 'Edit all tasks', 'edit.all'),
+      createPerm('projects', 'tasks', 'Edit assigned tasks', 'edit.assigned'),
+      createPerm('projects', 'tasks', 'Delete tasks', 'delete'),
+
+      // Resource allocation permissions
+      createPerm('projects', 'resources', 'View resource allocations', 'view'),
+      createPerm('projects', 'resources', 'Allocate resources to projects', 'allocate'),
+      createPerm('projects', 'resources', 'Manage all resource allocations', 'manage'),
+
+      // Financial permissions
+      createPerm('projects', 'budget', 'View project budgets', 'view'),
+      createPerm('projects', 'budget', 'Edit project budgets', 'edit'),
+      createPerm('projects', 'financials', 'Manage financial tracking (EVM, invoicing)', 'manage'),
+
+      // RAID register permissions
+      createPerm('projects', 'raid', 'View RAID register', 'view'),
+      createPerm('projects', 'raid', 'Manage risks, issues, assumptions, decisions', 'manage'),
+
+      // Gate review permissions
+      createPerm('projects', 'gates', 'View gate reviews', 'view'),
+      createPerm('projects', 'gates', 'Approve gate reviews', 'approve'),
+
+      // Document permissions
+      createPerm('projects', 'documents', 'View project documents', 'view'),
+      createPerm('projects', 'documents', 'Upload documents', 'upload'),
+      createPerm('projects', 'documents', 'Delete documents', 'delete'),
+
+      // Time tracking permissions
+      createPerm('projects', 'time', 'Log time to projects', 'log'),
+      createPerm('projects', 'time', 'Approve time entries', 'approve'),
+      createPerm('projects', 'time', 'View all time entries', 'view.all'),
+
+      // Analytics permissions
+      createPerm('projects', 'analytics', 'View project analytics', 'view'),
+      createPerm('projects', 'reports', 'Generate custom reports', 'generate')
     )
 
     // Knowledge Base
@@ -399,15 +449,16 @@ export class PermissionService {
   }
 
   /**
-   * Get legacy role permissions for backward compatibility
+   * Get ITSM role permissions mapping
+   * Defines comprehensive permission sets for each ITSM role
    *
-   * @param role - Legacy role name
+   * @param roleName - Role name
    * @returns Array of permission keys
    */
-  static getLegacyRolePermissions(role: string): string[] {
-    const legacyRoleMap: Record<string, string[]> = {
-      admin: [
-        // Full access to everything
+  static getITSMRolePermissions(roleName: string): string[] {
+    const rolePermissions: Record<string, string[]> = {
+      'system_administrator': [
+        // Full access to everything - highest privilege
         'tickets.view.all',
         'tickets.create',
         'tickets.edit.all',
@@ -432,11 +483,65 @@ export class PermissionService {
         'assets.delete',
         'assets.manage',
         'assets.remoteControl',
+
+        // All project permissions
         'projects.view.all',
+        'projects.view.assigned',
+        'projects.view.own',
         'projects.create',
         'projects.edit.all',
+        'projects.edit.own',
         'projects.delete',
         'projects.manage',
+
+        // All portfolio permissions
+        'portfolios.view.all',
+        'portfolios.view.own',
+        'portfolios.create',
+        'portfolios.edit.all',
+        'portfolios.edit.own',
+        'portfolios.delete',
+        'portfolios.manage',
+
+        // All task permissions
+        'projects.tasks.view',
+        'projects.tasks.create',
+        'projects.tasks.edit.all',
+        'projects.tasks.edit.assigned',
+        'projects.tasks.delete',
+
+        // All resource permissions
+        'projects.resources.view',
+        'projects.resources.allocate',
+        'projects.resources.manage',
+
+        // All financial permissions
+        'projects.budget.view',
+        'projects.budget.edit',
+        'projects.financials.manage',
+
+        // All RAID permissions
+        'projects.raid.view',
+        'projects.raid.manage',
+
+        // All gate permissions
+        'projects.gates.view',
+        'projects.gates.approve',
+
+        // All document permissions
+        'projects.documents.view',
+        'projects.documents.upload',
+        'projects.documents.delete',
+
+        // All time tracking permissions
+        'projects.time.log',
+        'projects.time.approve',
+        'projects.time.view.all',
+
+        // All analytics permissions
+        'projects.analytics.view',
+        'projects.reports.generate',
+
         'kb.view',
         'kb.create',
         'kb.edit.all',
@@ -475,8 +580,55 @@ export class PermissionService {
         'portal.theme.edit',
         'portal.datasource.edit',
       ],
-      technician: [
-        // Technician-level access
+      'service_desk_manager': [
+        // Manages service desk operations, teams, queues, SLAs
+        'tickets.view.all',
+        'tickets.create',
+        'tickets.edit.all',
+        'tickets.delete',
+        'tickets.assign',
+        'tickets.close',
+        'tickets.reopen',
+        'tickets.comment',
+        'tickets.createIncident',
+        'tickets.manageIncident',
+        'tickets.publishIncident',
+        'tickets.createChange',
+        'tickets.approveChange',
+        'tickets.createServiceRequest',
+        'tickets.approveServiceRequest',
+        'tickets.createProblem',
+        'tickets.manageProblem',
+        'assets.view',
+        'assets.create',
+        'assets.edit',
+        'projects.view.all',
+        'projects.create',
+        'projects.edit.all',
+        'kb.view',
+        'kb.create',
+        'kb.edit.all',
+        'kb.publish',
+        'users.view',
+        'users.create',
+        'users.edit',
+        'roles.view',
+        'clients.view',
+        'clients.create',
+        'clients.edit',
+        'schedule.view.all',
+        'schedule.create',
+        'schedule.edit',
+        'schedule.delete',
+        'reports.view',
+        'reports.create',
+        'reports.export',
+        'settings.view',
+        'portal.view',
+        'portal.edit',
+      ],
+      'service_desk_agent': [
+        // Front-line support - handles tickets, incidents, service requests
         'tickets.view.all',
         'tickets.create',
         'tickets.edit.all',
@@ -490,16 +642,30 @@ export class PermissionService {
         'tickets.implementChange',
         'tickets.createServiceRequest',
         'tickets.createProblem',
-        'tickets.manageProblem',
         'assets.view',
         'assets.create',
         'assets.edit',
-        'assets.manage',
         'assets.remoteControl',
-        'projects.view.all',
+
+        // Project permissions for assigned projects
+        'projects.view.assigned',
+        'projects.view.own',
         'projects.create',
         'projects.edit.own',
-        'projects.manage',
+
+        // Task permissions
+        'projects.tasks.view',
+        'projects.tasks.edit.assigned',
+
+        // Time tracking
+        'projects.time.log',
+
+        // Documents
+        'projects.documents.view',
+
+        // RAID (view only)
+        'projects.raid.view',
+
         'kb.view',
         'kb.create',
         'kb.edit.own',
@@ -511,8 +677,255 @@ export class PermissionService {
         'reports.view',
         'settings.view',
       ],
-      user: [
-        // Basic user access
+      'technical_lead': [
+        // Advanced technical support - escalations, complex issues
+        'tickets.view.all',
+        'tickets.create',
+        'tickets.edit.all',
+        'tickets.assign',
+        'tickets.close',
+        'tickets.reopen',
+        'tickets.comment',
+        'tickets.createIncident',
+        'tickets.manageIncident',
+        'tickets.publishIncident',
+        'tickets.createChange',
+        'tickets.implementChange',
+        'tickets.createServiceRequest',
+        'tickets.createProblem',
+        'tickets.manageProblem',
+        'assets.view',
+        'assets.create',
+        'assets.edit',
+        'assets.manage',
+        'assets.remoteControl',
+        'projects.view.all',
+        'projects.create',
+        'projects.edit.all',
+        'projects.manage',
+        'kb.view',
+        'kb.create',
+        'kb.edit.all',
+        'kb.publish',
+        'users.view',
+        'clients.view',
+        'schedule.view.all',
+        'schedule.create',
+        'schedule.edit',
+        'reports.view',
+        'reports.create',
+        'settings.view',
+      ],
+      'problem_manager': [
+        // Problem management specialist - root cause analysis, KEDB
+        'tickets.view.all',
+        'tickets.create',
+        'tickets.edit.all',
+        'tickets.comment',
+        'tickets.createIncident',
+        'tickets.createProblem',
+        'tickets.manageProblem',
+        'assets.view',
+        'kb.view',
+        'kb.create',
+        'kb.edit.all',
+        'kb.publish',
+        'users.view',
+        'clients.view',
+        'schedule.view.all',
+        'reports.view',
+        'reports.create',
+        'reports.export',
+        'settings.view',
+      ],
+      'change_manager': [
+        // Change management specialist - CAB, approvals, change control
+        'tickets.view.all',
+        'tickets.create',
+        'tickets.edit.all',
+        'tickets.comment',
+        'tickets.createChange',
+        'tickets.approveChange',
+        'tickets.implementChange',
+        'tickets.createIncident',
+        'assets.view',
+        'projects.view.all',
+        'projects.create',
+        'projects.edit.all',
+        'kb.view',
+        'kb.create',
+        'kb.edit.own',
+        'users.view',
+        'clients.view',
+        'schedule.view.all',
+        'schedule.create',
+        'schedule.edit',
+        'reports.view',
+        'reports.create',
+        'settings.view',
+      ],
+      'asset_manager': [
+        // IT asset management specialist
+        'tickets.view.all',
+        'tickets.create',
+        'tickets.comment',
+        'tickets.createServiceRequest',
+        'assets.view',
+        'assets.create',
+        'assets.edit',
+        'assets.delete',
+        'assets.manage',
+        'assets.remoteControl',
+        'projects.view.all',
+        'kb.view',
+        'users.view',
+        'clients.view',
+        'schedule.view.all',
+        'reports.view',
+        'reports.create',
+        'settings.view',
+      ],
+      'project_manager': [
+        // Project management specialist - full project/portfolio management
+        'tickets.view.all',
+        'tickets.create',
+        'tickets.comment',
+        'tickets.createServiceRequest',
+        'assets.view',
+
+        // Enhanced project permissions
+        'projects.view.all',
+        'projects.view.assigned',
+        'projects.create',
+        'projects.edit.all',
+        'projects.delete',
+        'projects.manage',
+
+        // Portfolio permissions
+        'portfolios.view.all',
+        'portfolios.view.own',
+        'portfolios.create',
+        'portfolios.edit.own',
+        'portfolios.manage',
+
+        // Task management
+        'projects.tasks.view',
+        'projects.tasks.create',
+        'projects.tasks.edit.all',
+        'projects.tasks.delete',
+
+        // Resource management
+        'projects.resources.view',
+        'projects.resources.allocate',
+        'projects.resources.manage',
+
+        // Financial management
+        'projects.budget.view',
+        'projects.budget.edit',
+        'projects.financials.manage',
+
+        // RAID management
+        'projects.raid.view',
+        'projects.raid.manage',
+
+        // Gate reviews
+        'projects.gates.view',
+        'projects.gates.approve',
+
+        // Documents
+        'projects.documents.view',
+        'projects.documents.upload',
+        'projects.documents.delete',
+
+        // Time tracking
+        'projects.time.log',
+        'projects.time.approve',
+        'projects.time.view.all',
+
+        // Analytics
+        'projects.analytics.view',
+        'projects.reports.generate',
+
+        'kb.view',
+        'users.view',
+        'clients.view',
+        'clients.create',
+        'clients.edit',
+        'schedule.view.all',
+        'schedule.create',
+        'schedule.edit',
+        'schedule.delete',
+        'reports.view',
+        'reports.create',
+        'settings.view',
+      ],
+      'portfolio_manager': [
+        // Portfolio management specialist - oversees multiple projects
+        'tickets.view.all',
+        'tickets.create',
+        'tickets.comment',
+        'assets.view',
+
+        // Portfolio-focused permissions
+        'portfolios.view.all',
+        'portfolios.create',
+        'portfolios.edit.all',
+        'portfolios.delete',
+        'portfolios.manage',
+
+        // Project visibility (all projects in portfolio)
+        'projects.view.all',
+        'projects.create',
+        'projects.edit.all',
+
+        // Analytics and reporting
+        'projects.analytics.view',
+        'projects.reports.generate',
+
+        // Resource planning
+        'projects.resources.view',
+        'projects.resources.allocate',
+
+        // Budget oversight
+        'projects.budget.view',
+
+        // RAID visibility
+        'projects.raid.view',
+
+        // Gate approvals
+        'projects.gates.view',
+        'projects.gates.approve',
+
+        'kb.view',
+        'users.view',
+        'clients.view',
+        'schedule.view.all',
+        'reports.view',
+        'reports.create',
+        'reports.export',
+        'settings.view',
+      ],
+      'knowledge_manager': [
+        // Knowledge base specialist - content curation
+        'tickets.view.all',
+        'tickets.create',
+        'tickets.comment',
+        'kb.view',
+        'kb.create',
+        'kb.edit.all',
+        'kb.delete',
+        'kb.publish',
+        'assets.view',
+        'users.view',
+        'clients.view',
+        'schedule.view.own',
+        'reports.view',
+        'settings.view',
+        'portal.view',
+        'portal.edit',
+      ],
+      'end_user': [
+        // Basic user - create tickets, view own items
         'tickets.view.own',
         'tickets.create',
         'tickets.edit.own',
@@ -523,9 +936,39 @@ export class PermissionService {
         'kb.view',
         'schedule.view.own',
       ],
+      'read_only': [
+        // View-only access - auditors, observers
+        'tickets.view.all',
+        'assets.view',
+        'projects.view.all',
+        'kb.view',
+        'users.view',
+        'clients.view',
+        'schedule.view.all',
+        'reports.view',
+        'settings.view',
+      ],
     }
 
-    return legacyRoleMap[role] || []
+    return rolePermissions[roleName] || []
+  }
+
+  /**
+   * Get legacy role permissions for backward compatibility
+   *
+   * @param role - Legacy role name
+   * @returns Array of permission keys
+   */
+  static getLegacyRolePermissions(role: string): string[] {
+    // Map legacy roles to ITSM roles
+    const legacyToITSM: Record<string, string> = {
+      admin: 'system_administrator',
+      technician: 'service_desk_agent',
+      user: 'end_user',
+    }
+
+    const itsmRole = legacyToITSM[role] || role
+    return this.getITSMRolePermissions(itsmRole)
   }
 
   /**

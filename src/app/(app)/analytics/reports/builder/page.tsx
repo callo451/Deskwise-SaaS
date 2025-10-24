@@ -36,9 +36,21 @@ import {
   Calendar,
   BarChart3,
   Table as TableIcon,
+  Loader2,
+  FileText,
+  FileSpreadsheet,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { useExport } from '@/hooks/use-export'
 
 export default function ReportBuilderPage() {
   const router = useRouter()
@@ -50,22 +62,172 @@ export default function ReportBuilderPage() {
   const [filters, setFilters] = useState<any[]>([])
   const [chartType, setChartType] = useState('table')
   const [showSaveDialog, setShowSaveDialog] = useState(false)
+  const [showPreviewDialog, setShowPreviewDialog] = useState(false)
+  const [previewData, setPreviewData] = useState<any[]>([])
+  const [previewLoading, setPreviewLoading] = useState(false)
   const [schedule, setSchedule] = useState<any>(null)
+  const { exportData, exporting } = useExport()
 
   const availableDataSources = [
-    { value: 'tickets', label: 'Tickets', icon: '🎫' },
-    { value: 'incidents', label: 'Incidents', icon: '🚨' },
-    { value: 'assets', label: 'Assets', icon: '💻' },
-    { value: 'projects', label: 'Projects', icon: '📁' },
-    { value: 'users', label: 'Users', icon: '👤' },
+    { value: 'unified_tickets', label: 'Service Desk Tickets', icon: '🎫', description: 'Unified ticketing system (incidents, requests, changes, problems)' },
+    { value: 'incidents', label: 'Incidents', icon: '🚨', description: 'IT incidents and service disruptions' },
+    { value: 'changes', label: 'Change Requests', icon: '🔄', description: 'Change management and approvals' },
+    { value: 'problems', label: 'Problem Records', icon: '🔍', description: 'Root cause analysis and problem management' },
+    { value: 'assets', label: 'Assets & Inventory', icon: '💻', description: 'Hardware and software asset tracking' },
+    { value: 'projects', label: 'Projects', icon: '📁', description: 'Project management and tracking' },
+    { value: 'knowledge', label: 'Knowledge Base', icon: '📚', description: 'Knowledge articles and documentation' },
+    { value: 'users', label: 'Users & Teams', icon: '👤', description: 'User accounts and team members' },
+    { value: 'clients', label: 'Clients & Organizations', icon: '🏢', description: 'Client companies and contacts' },
+    { value: 'billing', label: 'Billing & Invoices', icon: '💰', description: 'Financial transactions and invoices' },
+    { value: 'quotes', label: 'Quotes & Estimates', icon: '📄', description: 'Service quotes and proposals' },
   ]
 
-  const dataSourceFields: Record<string, string[]> = {
-    tickets: ['ID', 'Title', 'Status', 'Priority', 'Category', 'Assignee', 'Created Date', 'Resolved Date'],
-    incidents: ['ID', 'Title', 'Severity', 'Impact', 'Status', 'Created Date', 'Resolved Date'],
-    assets: ['ID', 'Name', 'Type', 'Status', 'Location', 'Value', 'Warranty Expiry'],
-    projects: ['ID', 'Name', 'Status', 'Budget', 'Progress', 'Start Date', 'Due Date'],
-    users: ['ID', 'Name', 'Email', 'Role', 'Department', 'Created Date'],
+  const dataSourceFields: Record<string, { field: string; label: string; type: 'string' | 'number' | 'date' | 'boolean' }[]> = {
+    unified_tickets: [
+      { field: 'ticketNumber', label: 'Ticket Number', type: 'string' },
+      { field: 'title', label: 'Title', type: 'string' },
+      { field: 'ticketType', label: 'Type', type: 'string' },
+      { field: 'status', label: 'Status', type: 'string' },
+      { field: 'priority', label: 'Priority', type: 'string' },
+      { field: 'category', label: 'Category', type: 'string' },
+      { field: 'subcategory', label: 'Subcategory', type: 'string' },
+      { field: 'assignedTo', label: 'Assigned To', type: 'string' },
+      { field: 'assignedTeam', label: 'Assigned Team', type: 'string' },
+      { field: 'requesterId', label: 'Requester', type: 'string' },
+      { field: 'clientId', label: 'Client', type: 'string' },
+      { field: 'createdAt', label: 'Created Date', type: 'date' },
+      { field: 'updatedAt', label: 'Last Updated', type: 'date' },
+      { field: 'resolvedAt', label: 'Resolved Date', type: 'date' },
+      { field: 'closedAt', label: 'Closed Date', type: 'date' },
+      { field: 'slaStatus', label: 'SLA Status', type: 'string' },
+      { field: 'timeToResolve', label: 'Time to Resolve (hours)', type: 'number' },
+    ],
+    incidents: [
+      { field: 'incidentNumber', label: 'Incident Number', type: 'string' },
+      { field: 'title', label: 'Title', type: 'string' },
+      { field: 'severity', label: 'Severity', type: 'string' },
+      { field: 'impact', label: 'Business Impact', type: 'string' },
+      { field: 'urgency', label: 'Urgency', type: 'string' },
+      { field: 'status', label: 'Status', type: 'string' },
+      { field: 'category', label: 'Category', type: 'string' },
+      { field: 'assignedTo', label: 'Assigned To', type: 'string' },
+      { field: 'reportedBy', label: 'Reported By', type: 'string' },
+      { field: 'affectedUsers', label: 'Affected Users', type: 'number' },
+      { field: 'createdAt', label: 'Reported Date', type: 'date' },
+      { field: 'resolvedAt', label: 'Resolved Date', type: 'date' },
+      { field: 'mttr', label: 'Mean Time to Resolve (hours)', type: 'number' },
+    ],
+    changes: [
+      { field: 'changeNumber', label: 'Change Number', type: 'string' },
+      { field: 'title', label: 'Title', type: 'string' },
+      { field: 'changeType', label: 'Change Type', type: 'string' },
+      { field: 'status', label: 'Status', type: 'string' },
+      { field: 'priority', label: 'Priority', type: 'string' },
+      { field: 'risk', label: 'Risk Level', type: 'string' },
+      { field: 'requestedBy', label: 'Requested By', type: 'string' },
+      { field: 'approver', label: 'Approver', type: 'string' },
+      { field: 'implementer', label: 'Implementer', type: 'string' },
+      { field: 'scheduledDate', label: 'Scheduled Date', type: 'date' },
+      { field: 'implementedDate', label: 'Implemented Date', type: 'date' },
+      { field: 'isApproved', label: 'Approved', type: 'boolean' },
+    ],
+    problems: [
+      { field: 'problemNumber', label: 'Problem Number', type: 'string' },
+      { field: 'title', label: 'Title', type: 'string' },
+      { field: 'status', label: 'Status', type: 'string' },
+      { field: 'priority', label: 'Priority', type: 'string' },
+      { field: 'category', label: 'Category', type: 'string' },
+      { field: 'rootCause', label: 'Root Cause', type: 'string' },
+      { field: 'assignedTo', label: 'Assigned To', type: 'string' },
+      { field: 'relatedIncidents', label: 'Related Incidents', type: 'number' },
+      { field: 'createdAt', label: 'Created Date', type: 'date' },
+      { field: 'resolvedAt', label: 'Resolved Date', type: 'date' },
+    ],
+    assets: [
+      { field: 'assetTag', label: 'Asset Tag', type: 'string' },
+      { field: 'name', label: 'Asset Name', type: 'string' },
+      { field: 'type', label: 'Asset Type', type: 'string' },
+      { field: 'category', label: 'Category', type: 'string' },
+      { field: 'status', label: 'Status', type: 'string' },
+      { field: 'manufacturer', label: 'Manufacturer', type: 'string' },
+      { field: 'model', label: 'Model', type: 'string' },
+      { field: 'serialNumber', label: 'Serial Number', type: 'string' },
+      { field: 'location', label: 'Location', type: 'string' },
+      { field: 'assignedTo', label: 'Assigned To', type: 'string' },
+      { field: 'purchaseDate', label: 'Purchase Date', type: 'date' },
+      { field: 'warrantyExpiry', label: 'Warranty Expiry', type: 'date' },
+      { field: 'purchaseCost', label: 'Purchase Cost', type: 'number' },
+      { field: 'currentValue', label: 'Current Value', type: 'number' },
+    ],
+    projects: [
+      { field: 'projectNumber', label: 'Project Number', type: 'string' },
+      { field: 'name', label: 'Project Name', type: 'string' },
+      { field: 'status', label: 'Status', type: 'string' },
+      { field: 'health', label: 'Health Status', type: 'string' },
+      { field: 'projectManager', label: 'Project Manager', type: 'string' },
+      { field: 'clientId', label: 'Client', type: 'string' },
+      { field: 'budget', label: 'Budget', type: 'number' },
+      { field: 'actualCost', label: 'Actual Cost', type: 'number' },
+      { field: 'progress', label: 'Progress %', type: 'number' },
+      { field: 'startDate', label: 'Start Date', type: 'date' },
+      { field: 'endDate', label: 'End Date', type: 'date' },
+      { field: 'completedDate', label: 'Completed Date', type: 'date' },
+    ],
+    knowledge: [
+      { field: 'articleId', label: 'Article ID', type: 'string' },
+      { field: 'title', label: 'Title', type: 'string' },
+      { field: 'category', label: 'Category', type: 'string' },
+      { field: 'status', label: 'Status', type: 'string' },
+      { field: 'visibility', label: 'Visibility', type: 'string' },
+      { field: 'author', label: 'Author', type: 'string' },
+      { field: 'views', label: 'Views', type: 'number' },
+      { field: 'helpfulVotes', label: 'Helpful Votes', type: 'number' },
+      { field: 'createdAt', label: 'Created Date', type: 'date' },
+      { field: 'updatedAt', label: 'Last Updated', type: 'date' },
+      { field: 'publishedAt', label: 'Published Date', type: 'date' },
+    ],
+    users: [
+      { field: 'userId', label: 'User ID', type: 'string' },
+      { field: 'name', label: 'Full Name', type: 'string' },
+      { field: 'email', label: 'Email Address', type: 'string' },
+      { field: 'role', label: 'Role', type: 'string' },
+      { field: 'department', label: 'Department', type: 'string' },
+      { field: 'title', label: 'Job Title', type: 'string' },
+      { field: 'isActive', label: 'Active', type: 'boolean' },
+      { field: 'createdAt', label: 'Created Date', type: 'date' },
+      { field: 'lastLogin', label: 'Last Login', type: 'date' },
+    ],
+    clients: [
+      { field: 'clientId', label: 'Client ID', type: 'string' },
+      { field: 'name', label: 'Client Name', type: 'string' },
+      { field: 'industry', label: 'Industry', type: 'string' },
+      { field: 'contactName', label: 'Primary Contact', type: 'string' },
+      { field: 'email', label: 'Email', type: 'string' },
+      { field: 'phone', label: 'Phone', type: 'string' },
+      { field: 'status', label: 'Status', type: 'string' },
+      { field: 'contractValue', label: 'Contract Value', type: 'number' },
+      { field: 'createdAt', label: 'Onboarded Date', type: 'date' },
+    ],
+    billing: [
+      { field: 'invoiceNumber', label: 'Invoice Number', type: 'string' },
+      { field: 'clientId', label: 'Client', type: 'string' },
+      { field: 'status', label: 'Status', type: 'string' },
+      { field: 'amount', label: 'Amount', type: 'number' },
+      { field: 'paid', label: 'Amount Paid', type: 'number' },
+      { field: 'outstanding', label: 'Outstanding Balance', type: 'number' },
+      { field: 'issueDate', label: 'Issue Date', type: 'date' },
+      { field: 'dueDate', label: 'Due Date', type: 'date' },
+      { field: 'paidDate', label: 'Paid Date', type: 'date' },
+    ],
+    quotes: [
+      { field: 'quoteNumber', label: 'Quote Number', type: 'string' },
+      { field: 'clientId', label: 'Client', type: 'string' },
+      { field: 'status', label: 'Status', type: 'string' },
+      { field: 'total', label: 'Total Amount', type: 'number' },
+      { field: 'validUntil', label: 'Valid Until', type: 'date' },
+      { field: 'createdAt', label: 'Created Date', type: 'date' },
+      { field: 'acceptedAt', label: 'Accepted Date', type: 'date' },
+    ],
   }
 
   const handleDataSourceToggle = (source: string) => {
@@ -93,6 +255,59 @@ export default function ReportBuilderPage() {
 
   const handleRemoveFilter = (index: number) => {
     setFilters(filters.filter((_, i) => i !== index))
+  }
+
+  const handlePreview = async () => {
+    if (dataSources.length === 0) {
+      toast.error('Please select at least one data source')
+      return
+    }
+
+    if (selectedFields.length === 0) {
+      toast.error('Please select at least one field')
+      return
+    }
+
+    try {
+      setPreviewLoading(true)
+      setShowPreviewDialog(true)
+
+      // Create a temporary report to run
+      const tempReport = {
+        dataSources,
+        fields: selectedFields,
+        filters,
+      }
+
+      // For preview, we'll just generate sample data based on the configuration
+      // In a real implementation, this would call a preview API endpoint
+      const sampleData = Array.from({ length: 10 }, (_, i) => {
+        const row: any = {}
+        selectedFields.forEach(field => {
+          const [_, fieldName] = field.split('.')
+          row[fieldName] = `Sample ${fieldName} ${i + 1}`
+        })
+        return row
+      })
+
+      setPreviewData(sampleData)
+    } catch (error) {
+      console.error('Preview error:', error)
+      toast.error('Failed to generate preview')
+    } finally {
+      setPreviewLoading(false)
+    }
+  }
+
+  const handleExportPreview = async (format: 'pdf' | 'excel' | 'csv') => {
+    try {
+      await exportData(format, previewData, {
+        filename: reportName || 'report_preview',
+        title: reportName || 'Report Preview',
+      })
+    } catch (error) {
+      console.error('Export error:', error)
+    }
   }
 
   const handleSaveReport = async () => {
@@ -137,7 +352,11 @@ export default function ReportBuilderPage() {
   }
 
   const availableFields = dataSources.flatMap((source) =>
-    dataSourceFields[source]?.map((field) => `${source}.${field}`) || []
+    dataSourceFields[source]?.map((fieldDef) => ({
+      value: `${source}.${fieldDef.field}`,
+      label: `${availableDataSources.find(ds => ds.value === source)?.label} - ${fieldDef.label}`,
+      type: fieldDef.type,
+    })) || []
   )
 
   return (
@@ -159,7 +378,12 @@ export default function ReportBuilderPage() {
         </div>
 
         <div className="flex gap-2">
-          <Button variant="outline" size="sm">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handlePreview}
+            disabled={dataSources.length === 0 || selectedFields.length === 0}
+          >
             <Eye className="w-4 h-4 mr-2" />
             Preview
           </Button>
@@ -182,19 +406,22 @@ export default function ReportBuilderPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             {availableDataSources.map((source) => (
-              <div key={source.value} className="flex items-center space-x-2">
-                <Checkbox
-                  id={source.value}
-                  checked={dataSources.includes(source.value)}
-                  onCheckedChange={() => handleDataSourceToggle(source.value)}
-                />
-                <label
-                  htmlFor={source.value}
-                  className="flex items-center gap-2 text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                >
-                  <span>{source.icon}</span>
-                  {source.label}
-                </label>
+              <div key={source.value} className="space-y-1">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id={source.value}
+                    checked={dataSources.includes(source.value)}
+                    onCheckedChange={() => handleDataSourceToggle(source.value)}
+                  />
+                  <label
+                    htmlFor={source.value}
+                    className="flex items-center gap-2 text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                  >
+                    <span>{source.icon}</span>
+                    {source.label}
+                  </label>
+                </div>
+                <p className="text-xs text-muted-foreground ml-6">{source.description}</p>
               </div>
             ))}
 
@@ -205,18 +432,19 @@ export default function ReportBuilderPage() {
               <div className="max-h-60 overflow-y-auto space-y-2 border rounded-md p-3">
                 {availableFields.length > 0 ? (
                   availableFields.map((field) => (
-                    <div key={field} className="flex items-center space-x-2">
+                    <div key={field.value} className="flex items-center space-x-2">
                       <Checkbox
-                        id={field}
-                        checked={selectedFields.includes(field)}
-                        onCheckedChange={() => handleFieldToggle(field)}
+                        id={field.value}
+                        checked={selectedFields.includes(field.value)}
+                        onCheckedChange={() => handleFieldToggle(field.value)}
                       />
                       <label
-                        htmlFor={field}
-                        className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                        htmlFor={field.value}
+                        className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
                       >
-                        {field}
+                        {field.label}
                       </label>
+                      <Badge variant="outline" className="text-xs">{field.type}</Badge>
                     </div>
                   ))
                 ) : (
@@ -262,12 +490,12 @@ export default function ReportBuilderPage() {
                   }}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Field" />
+                    <SelectValue placeholder="Select field" />
                   </SelectTrigger>
                   <SelectContent>
                     {availableFields.map((field) => (
-                      <SelectItem key={field} value={field}>
-                        {field}
+                      <SelectItem key={field.value} value={field.value}>
+                        {field.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -285,11 +513,21 @@ export default function ReportBuilderPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="equals">Equals</SelectItem>
-                    <SelectItem value="notEquals">Not Equals</SelectItem>
+                    <SelectItem value="equals">Equals (=)</SelectItem>
+                    <SelectItem value="notEquals">Not Equals (≠)</SelectItem>
                     <SelectItem value="contains">Contains</SelectItem>
-                    <SelectItem value="greaterThan">Greater Than</SelectItem>
-                    <SelectItem value="lessThan">Less Than</SelectItem>
+                    <SelectItem value="notContains">Does Not Contain</SelectItem>
+                    <SelectItem value="startsWith">Starts With</SelectItem>
+                    <SelectItem value="endsWith">Ends With</SelectItem>
+                    <SelectItem value="greaterThan">Greater Than (&gt;)</SelectItem>
+                    <SelectItem value="greaterThanOrEqual">Greater Than or Equal (≥)</SelectItem>
+                    <SelectItem value="lessThan">Less Than (&lt;)</SelectItem>
+                    <SelectItem value="lessThanOrEqual">Less Than or Equal (≤)</SelectItem>
+                    <SelectItem value="between">Between</SelectItem>
+                    <SelectItem value="isEmpty">Is Empty</SelectItem>
+                    <SelectItem value="isNotEmpty">Is Not Empty</SelectItem>
+                    <SelectItem value="isTrue">Is True</SelectItem>
+                    <SelectItem value="isFalse">Is False</SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -351,14 +589,17 @@ export default function ReportBuilderPage() {
             <Separator />
 
             <div className="space-y-2">
-              <Label>Selected Fields</Label>
+              <Label>Selected Fields ({selectedFields.length})</Label>
               <div className="flex flex-wrap gap-2">
                 {selectedFields.length > 0 ? (
-                  selectedFields.map((field) => (
-                    <Badge key={field} variant="secondary">
-                      {field}
-                    </Badge>
-                  ))
+                  selectedFields.map((fieldValue) => {
+                    const field = availableFields.find(f => f.value === fieldValue)
+                    return (
+                      <Badge key={fieldValue} variant="secondary">
+                        {field?.label || fieldValue}
+                      </Badge>
+                    )
+                  })
                 ) : (
                   <p className="text-sm text-muted-foreground">
                     No fields selected
@@ -418,11 +659,16 @@ export default function ReportBuilderPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="custom">Custom</SelectItem>
-                  <SelectItem value="tickets">Tickets</SelectItem>
+                  <SelectItem value="custom">Custom Reports</SelectItem>
+                  <SelectItem value="service_desk">Service Desk</SelectItem>
                   <SelectItem value="incidents">Incidents</SelectItem>
-                  <SelectItem value="assets">Assets</SelectItem>
+                  <SelectItem value="changes">Change Management</SelectItem>
+                  <SelectItem value="problems">Problem Management</SelectItem>
+                  <SelectItem value="assets">Assets & Inventory</SelectItem>
                   <SelectItem value="projects">Projects</SelectItem>
+                  <SelectItem value="knowledge">Knowledge Base</SelectItem>
+                  <SelectItem value="billing">Billing & Finance</SelectItem>
+                  <SelectItem value="users">Users & Teams</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -437,6 +683,96 @@ export default function ReportBuilderPage() {
               Save Report
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Preview Dialog */}
+      <Dialog open={showPreviewDialog} onOpenChange={setShowPreviewDialog}>
+        <DialogContent className="max-w-6xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between">
+              <span>Report Preview</span>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleExportPreview('pdf')}
+                  disabled={exporting || previewLoading}
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  PDF
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleExportPreview('excel')}
+                  disabled={exporting || previewLoading}
+                >
+                  <FileSpreadsheet className="w-4 h-4 mr-2" />
+                  Excel
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleExportPreview('csv')}
+                  disabled={exporting || previewLoading}
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  CSV
+                </Button>
+              </div>
+            </DialogTitle>
+          </DialogHeader>
+
+          {previewLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          ) : previewData.length > 0 ? (
+            <div className="space-y-4">
+              <div className="text-sm text-muted-foreground">
+                Showing {previewData.length} sample record(s)
+              </div>
+              <div className="border rounded-md">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      {selectedFields.map((field) => {
+                        const fieldObj = availableFields.find(f => f.value === field)
+                        return (
+                          <TableHead key={field} className="font-semibold">
+                            {fieldObj?.label || field}
+                          </TableHead>
+                        )
+                      })}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {previewData.map((row, index) => (
+                      <TableRow key={index}>
+                        {selectedFields.map((field) => {
+                          const [_, fieldName] = field.split('.')
+                          const value = row[fieldName]
+                          return (
+                            <TableCell key={field}>
+                              {value !== null && value !== undefined ? String(value) : '-'}
+                            </TableCell>
+                          )
+                        })}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              <p className="text-xs text-muted-foreground text-center">
+                This is sample data. Save and run the report to see actual results.
+              </p>
+            </div>
+          ) : (
+            <div className="text-center py-12 text-muted-foreground">
+              No preview data available
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

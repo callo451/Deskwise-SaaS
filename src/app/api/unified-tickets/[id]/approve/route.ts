@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
+import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { UnifiedTicketService } from '@/lib/services/unified-tickets'
 import { requirePermission, createPermissionError } from '@/lib/middleware/permissions'
@@ -35,9 +35,9 @@ export async function POST(
       )
     }
 
-    // Check approval permission
+    // Check approval permission (unified ticketing permissions)
     const approvePermission =
-      ticket.ticketType === 'change' ? 'changes.approve' : 'service_requests.approve'
+      ticket.ticketType === 'change' ? 'tickets.approveChange' : 'tickets.approveServiceRequest'
 
     const hasPermission = await requirePermission(session, approvePermission)
 

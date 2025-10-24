@@ -55,6 +55,9 @@ export const COLLECTIONS = {
   // Unified Ticketing System (Tickets, Incidents, Changes, Service Requests, Problems)
   UNIFIED_TICKETS: 'unified_tickets',
   UNIFIED_TICKET_UPDATES: 'unified_ticket_updates',
+  UNIFIED_TICKET_COMMENTS: 'unified_ticket_comments',
+  UNIFIED_TICKET_TIME_ENTRIES: 'unified_ticket_time_entries',
+  ACTIVE_TIMERS: 'active_timers',
 
   // Legacy collections (deprecated - kept for migration rollback)
   /** @deprecated Use UNIFIED_TICKETS with ticketType='service_request' filter */

@@ -429,53 +429,176 @@ export class RoleService {
   }
 
   /**
-   * Get default roles seed data
+   * Get default ITSM roles seed data
    *
    * @param orgId - Organization ID
-   * @returns Array of default roles
+   * @returns Array of default ITSM roles
    */
   static getDefaultRoles(orgId: string): Omit<Role, '_id'>[] {
     const now = new Date()
 
     return [
+      // 1. System Administrator - Highest privilege
       {
         orgId,
-        name: 'admin',
-        displayName: 'Administrator',
-        description: 'Full access to all features and settings',
-        permissions: PermissionService.getLegacyRolePermissions('admin'),
+        name: 'system_administrator',
+        displayName: 'System Administrator',
+        description: 'Full administrative access to all platform features, settings, and user management',
+        permissions: PermissionService.getITSMRolePermissions('system_administrator'),
         isSystem: true,
         isActive: true,
-        color: '#ef4444', // red
+        color: '#dc2626', // red-600
         icon: 'ShieldCheck',
         createdBy: 'system',
         createdAt: now,
         updatedAt: now,
       },
+      // 2. Service Desk Manager
       {
         orgId,
-        name: 'technician',
-        displayName: 'Technician',
-        description: 'Access to tickets, assets, and projects',
-        permissions: PermissionService.getLegacyRolePermissions('technician'),
+        name: 'service_desk_manager',
+        displayName: 'Service Desk Manager',
+        description: 'Manages service desk operations, teams, queues, SLAs, and workflow approvals',
+        permissions: PermissionService.getITSMRolePermissions('service_desk_manager'),
         isSystem: true,
         isActive: true,
-        color: '#3b82f6', // blue
-        icon: 'Wrench',
+        color: '#7c3aed', // violet-600
+        icon: 'Users',
         createdBy: 'system',
         createdAt: now,
         updatedAt: now,
       },
+      // 3. Service Desk Agent
       {
         orgId,
-        name: 'user',
-        displayName: 'End User',
-        description: 'Basic access to view and create tickets',
-        permissions: PermissionService.getLegacyRolePermissions('user'),
+        name: 'service_desk_agent',
+        displayName: 'Service Desk Agent',
+        description: 'Front-line support agent handling tickets, incidents, and service requests',
+        permissions: PermissionService.getITSMRolePermissions('service_desk_agent'),
         isSystem: true,
         isActive: true,
-        color: '#22c55e', // green
+        color: '#2563eb', // blue-600
+        icon: 'Headphones',
+        createdBy: 'system',
+        createdAt: now,
+        updatedAt: now,
+      },
+      // 4. Technical Lead
+      {
+        orgId,
+        name: 'technical_lead',
+        displayName: 'Technical Lead',
+        description: 'Advanced technical support for escalations, complex issues, and knowledge creation',
+        permissions: PermissionService.getITSMRolePermissions('technical_lead'),
+        isSystem: true,
+        isActive: true,
+        color: '#0891b2', // cyan-600
+        icon: 'Cpu',
+        createdBy: 'system',
+        createdAt: now,
+        updatedAt: now,
+      },
+      // 5. Problem Manager
+      {
+        orgId,
+        name: 'problem_manager',
+        displayName: 'Problem Manager',
+        description: 'Problem management specialist focused on root cause analysis and KEDB maintenance',
+        permissions: PermissionService.getITSMRolePermissions('problem_manager'),
+        isSystem: true,
+        isActive: true,
+        color: '#ea580c', // orange-600
+        icon: 'SearchCheck',
+        createdBy: 'system',
+        createdAt: now,
+        updatedAt: now,
+      },
+      // 6. Change Manager
+      {
+        orgId,
+        name: 'change_manager',
+        displayName: 'Change Manager',
+        description: 'Change management specialist for CAB coordination, approvals, and change control',
+        permissions: PermissionService.getITSMRolePermissions('change_manager'),
+        isSystem: true,
+        isActive: true,
+        color: '#c026d3', // fuchsia-600
+        icon: 'GitBranch',
+        createdBy: 'system',
+        createdAt: now,
+        updatedAt: now,
+      },
+      // 7. Asset Manager
+      {
+        orgId,
+        name: 'asset_manager',
+        displayName: 'Asset Manager',
+        description: 'IT asset management specialist responsible for inventory and asset lifecycle',
+        permissions: PermissionService.getITSMRolePermissions('asset_manager'),
+        isSystem: true,
+        isActive: true,
+        color: '#65a30d', // lime-600
+        icon: 'Package',
+        createdBy: 'system',
+        createdAt: now,
+        updatedAt: now,
+      },
+      // 8. Project Manager
+      {
+        orgId,
+        name: 'project_manager',
+        displayName: 'Project Manager',
+        description: 'Project management specialist for planning, execution, and resource allocation',
+        permissions: PermissionService.getITSMRolePermissions('project_manager'),
+        isSystem: true,
+        isActive: true,
+        color: '#0d9488', // teal-600
+        icon: 'Briefcase',
+        createdBy: 'system',
+        createdAt: now,
+        updatedAt: now,
+      },
+      // 9. Knowledge Manager
+      {
+        orgId,
+        name: 'knowledge_manager',
+        displayName: 'Knowledge Manager',
+        description: 'Knowledge base specialist for content curation, approval, and portal management',
+        permissions: PermissionService.getITSMRolePermissions('knowledge_manager'),
+        isSystem: true,
+        isActive: true,
+        color: '#0369a1', // sky-700
+        icon: 'BookOpen',
+        createdBy: 'system',
+        createdAt: now,
+        updatedAt: now,
+      },
+      // 10. End User
+      {
+        orgId,
+        name: 'end_user',
+        displayName: 'End User',
+        description: 'Standard user with basic access to create tickets and view own items',
+        permissions: PermissionService.getITSMRolePermissions('end_user'),
+        isSystem: true,
+        isActive: true,
+        color: '#16a34a', // green-600
         icon: 'User',
+        createdBy: 'system',
+        createdAt: now,
+        updatedAt: now,
+      },
+      // 11. Read Only
+      {
+        orgId,
+        name: 'read_only',
+        displayName: 'Read Only',
+        description: 'View-only access for auditors, observers, and reporting purposes',
+        permissions: PermissionService.getITSMRolePermissions('read_only'),
+        isSystem: true,
+        isActive: true,
+        color: '#64748b', // slate-500
+        icon: 'Eye',
         createdBy: 'system',
         createdAt: now,
         updatedAt: now,
@@ -513,16 +636,21 @@ export class RoleService {
     const db = await getDatabase()
     const usersCollection = db.collection<User>(COLLECTIONS.USERS)
 
-    // Get default role IDs
-    const adminRoleId = await this.getDefaultRoleId(orgId, 'admin')
-    const technicianRoleId = await this.getDefaultRoleId(orgId, 'technician')
-    const userRoleId = await this.getDefaultRoleId(orgId, 'user')
+    // Get ITSM role IDs
+    const systemAdminRoleId = await this.getDefaultRoleId(orgId, 'system_administrator')
+    const serviceDeskAgentRoleId = await this.getDefaultRoleId(orgId, 'service_desk_agent')
+    const endUserRoleId = await this.getDefaultRoleId(orgId, 'end_user')
+
+    // Fallback to legacy role names if ITSM roles don't exist
+    const adminRoleId = systemAdminRoleId || await this.getDefaultRoleId(orgId, 'admin')
+    const technicianRoleId = serviceDeskAgentRoleId || await this.getDefaultRoleId(orgId, 'technician')
+    const userRoleId = endUserRoleId || await this.getDefaultRoleId(orgId, 'user')
 
     if (!adminRoleId || !technicianRoleId || !userRoleId) {
       throw new Error('Default roles not found. Please seed roles first.')
     }
 
-    // Map legacy roles to role IDs
+    // Map legacy roles to RBAC role IDs
     const roleMap: Record<string, string> = {
       admin: adminRoleId,
       technician: technicianRoleId,

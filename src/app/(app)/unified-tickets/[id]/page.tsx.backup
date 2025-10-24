@@ -1,0 +1,657 @@
+'use client'
+
+import { useState, useEffect, use } from 'react'
+import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
+import { Badge } from '@/components/ui/badge'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  Check,
+  X,
+  Loader2,
+  MessageSquare,
+  AlertCircle,
+  Activity,
+  Paperclip,
+  FileText,
+  Clock as ClockIcon,
+} from 'lucide-react'
+import { TicketHeader } from '@/components/unified-tickets/ticket-header'
+import { ServiceCatalogCard } from '@/components/unified-tickets/service-catalog-card'
+import { SLATrackingCard } from '@/components/unified-tickets/sla-tracking-card'
+import { TicketDetailsCard } from '@/components/unified-tickets/ticket-details-card'
+import { TypeSpecificSections } from '@/components/unified-tickets/type-specific-sections'
+import { ActivityTimeline } from '@/components/unified-tickets/activity-timeline'
+import { EnhancedCommentSection } from '@/components/unified-tickets/enhanced-comment-section'
+import { Comment } from '@/components/unified-tickets/comment-item'
+import { AttachmentsTab } from '@/components/unified-tickets/attachments-tab'
+import { TimeTrackingTab } from '@/components/unified-tickets/time-tracking-tab'
+import { buildActivityTimeline, buildCannedResponseVariables } from '@/lib/utils/activity-timeline-builder'
+import {
+  UnifiedTicket,
+  ServiceRequestMetadata,
+  UnifiedTicketUpdate,
+  UnifiedTicketStatus,
+} from '@/lib/types'
+import { formatDistanceToNow } from 'date-fns'
+
+export default function UnifiedTicketDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}) {
+  const { id } = use(params)
+  const router = useRouter()
+  const { data: session } = useSession()
+  const [ticket, setTicket] = useState<UnifiedTicket | null>(null)
+  const [updates, setUpdates] = useState<UnifiedTicketUpdate[]>([])
+  const [comments, setComments] = useState<Comment[]>([])
+  const [users, setUsers] = useState<Array<{ _id: string; name: string; email: string }>>([])
+  const [loading, setLoading] = useState(true)
+  const [commentsLoading, setCommentsLoading] = useState(false)
+  const [actionLoading, setActionLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [activeTab, setActiveTab] = useState('overview')
+
+  // Action states
+  const [approvalNotes, setApprovalNotes] = useState('')
+  const [rejectionReason, setRejectionReason] = useState('')
+  const [updateMessage, setUpdateMessage] = useState('')
+  const [updateType, setUpdateType] = useState('general')
+
+  useEffect(() => {
+    fetchTicket()
+    fetchUpdates()
+    fetchComments()
+    fetchUsers()
+  }, [id])
+
+  const fetchTicket = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch(`/api/unified-tickets/${id}`)
+      const data = await response.json()
+
+      if (data.success) {
+        setTicket(data.ticket)
+      } else {
+        setError(data.error || 'Failed to load ticket')
+      }
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchUpdates = async () => {
+    try {
+      const response = await fetch(`/api/unified-tickets/${id}/updates`)
+      const data = await response.json()
+
+      if (data.success) {
+        setUpdates(data.updates || [])
+      }
+    } catch (err) {
+      console.error('Error fetching updates:', err)
+    }
+  }
+
+  const fetchComments = async () => {
+    try {
+      setCommentsLoading(true)
+      const response = await fetch(`/api/unified-tickets/${id}/comments`)
+      const data = await response.json()
+
+      if (data.success) {
+        setComments(data.comments || [])
+      }
+    } catch (err) {
+      console.error('Error fetching comments:', err)
+    } finally {
+      setCommentsLoading(false)
+    }
+  }
+
+  const fetchUsers = async () => {
+    try {
+      const response = await fetch('/api/users')
+      const data = await response.json()
+
+      if (data.success) {
+        setUsers(data.users || [])
+      }
+    } catch (err) {
+      console.error('Error fetching users:', err)
+    }
+  }
+
+  const handleTitleSave = async (title: string) => {
+    await fetch(`/api/unified-tickets/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title }),
+    })
+    if (ticket) setTicket({ ...ticket, title })
+  }
+
+  const handleDescriptionSave = async (description: string) => {
+    await fetch(`/api/unified-tickets/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ description }),
+    })
+    if (ticket) setTicket({ ...ticket, description })
+  }
+
+  const handleStatusChange = async (status: UnifiedTicketStatus) => {
+    setActionLoading(true)
+    try {
+      const response = await fetch(`/api/unified-tickets/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        setTicket(data.ticket)
+        setError('')
+      } else {
+        setError(data.error || 'Failed to update status')
+      }
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const handlePriorityChange = async (priority: string) => {
+    setActionLoading(true)
+    try {
+      const response = await fetch(`/api/unified-tickets/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ priority }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        setTicket(data.ticket)
+        setError('')
+      } else {
+        setError(data.error || 'Failed to update priority')
+      }
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const handleAssigneeChange = async (userId: string) => {
+    const assignedTo = userId === 'unassigned' ? undefined : userId
+    await fetch(`/api/unified-tickets/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ assignedTo }),
+    })
+    fetchTicket() // Refresh to get updated assignee name
+  }
+
+  const handleAssignToMe = async () => {
+    if (session?.user?.userId) {
+      await handleAssigneeChange(session.user.userId)
+    }
+  }
+
+  const handleApprove = async () => {
+    setActionLoading(true)
+    try {
+      const response = await fetch(`/api/unified-tickets/${id}/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes: approvalNotes }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        setTicket(data.ticket)
+        setApprovalNotes('')
+        setError('')
+      } else {
+        setError(data.error || 'Failed to approve')
+      }
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const handleReject = async () => {
+    if (!rejectionReason.trim()) {
+      setError('Rejection reason is required')
+      return
+    }
+
+    setActionLoading(true)
+    try {
+      const response = await fetch(`/api/unified-tickets/${id}/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: rejectionReason }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        setTicket(data.ticket)
+        setRejectionReason('')
+        setError('')
+      } else {
+        setError(data.error || 'Failed to reject')
+      }
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const handleAddUpdate = async () => {
+    if (!updateMessage.trim()) {
+      setError('Update message is required')
+      return
+    }
+
+    setActionLoading(true)
+    try {
+      const response = await fetch(`/api/unified-tickets/${id}/updates`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: updateMessage,
+          updateType,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        setUpdateMessage('')
+        setUpdateType('general')
+        setError('')
+        fetchUpdates()
+      } else {
+        setError(data.error || 'Failed to add update')
+      }
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const handleAddComment = async (content: string, isInternal: boolean) => {
+    const response = await fetch(`/api/unified-tickets/${id}/comments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content, isInternal }),
+    })
+
+    const data = await response.json()
+
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to add comment')
+    }
+
+    fetchComments()
+  }
+
+  const handleEditComment = async (commentId: string, newContent: string) => {
+    const response = await fetch(`/api/unified-tickets/${id}/comments/${commentId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: newContent }),
+    })
+
+    const data = await response.json()
+
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to edit comment')
+    }
+
+    fetchComments()
+  }
+
+  const handleDeleteComment = async (commentId: string) => {
+    const response = await fetch(`/api/unified-tickets/${id}/comments/${commentId}`, {
+      method: 'DELETE',
+    })
+
+    const data = await response.json()
+
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to delete comment')
+    }
+
+    fetchComments()
+  }
+
+  const renderApprovalActions = () => {
+    if (!ticket || !['change', 'service_request'].includes(ticket.ticketType)) return null
+    if (ticket.status !== 'pending_approval') return null
+
+    return (
+      <Card className="p-6 space-y-4">
+        <h3 className="font-semibold text-lg">Approval Required</h3>
+
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="approvalNotes">Approval Notes (Optional)</Label>
+            <Textarea
+              id="approvalNotes"
+              placeholder="Add notes about the approval decision..."
+              value={approvalNotes}
+              onChange={(e) => setApprovalNotes(e.target.value)}
+              rows={3}
+            />
+          </div>
+
+          <div className="flex gap-2">
+            <Button onClick={handleApprove} disabled={actionLoading} className="flex-1">
+              {actionLoading ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Check className="h-4 w-4 mr-2" />
+              )}
+              Approve
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (rejectionReason) {
+                  handleReject()
+                }
+              }}
+              disabled={actionLoading || !rejectionReason}
+              className="flex-1"
+            >
+              <X className="h-4 w-4 mr-2" />
+              Reject
+            </Button>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="rejectionReason">Rejection Reason *</Label>
+            <Textarea
+              id="rejectionReason"
+              placeholder="Required if rejecting..."
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+              rows={2}
+            />
+          </div>
+        </div>
+      </Card>
+    )
+  }
+
+  const renderUpdatesSection = () => {
+    if (!ticket || !['incident', 'problem'].includes(ticket.ticketType)) return null
+
+    return (
+      <Card className="p-6 space-y-4">
+        <h3 className="font-semibold text-lg">Updates</h3>
+
+        {/* Add Update Form */}
+        <div className="space-y-4 pb-4 border-b">
+          <div className="space-y-2">
+            <Label htmlFor="updateMessage">New Update</Label>
+            <Textarea
+              id="updateMessage"
+              placeholder="Add a status update..."
+              value={updateMessage}
+              onChange={(e) => setUpdateMessage(e.target.value)}
+              rows={3}
+            />
+          </div>
+
+          <div className="flex items-center gap-4">
+            <Select value={updateType} onValueChange={setUpdateType}>
+              <SelectTrigger className="w-48">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="general">General Update</SelectItem>
+                <SelectItem value="status">Status Change</SelectItem>
+                {ticket.ticketType === 'problem' && (
+                  <>
+                    <SelectItem value="root_cause">Root Cause</SelectItem>
+                    <SelectItem value="workaround">Workaround</SelectItem>
+                    <SelectItem value="solution">Solution</SelectItem>
+                  </>
+                )}
+              </SelectContent>
+            </Select>
+
+            <Button onClick={handleAddUpdate} disabled={actionLoading || !updateMessage.trim()}>
+              {actionLoading ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <MessageSquare className="h-4 w-4 mr-2" />
+              )}
+              Post Update
+            </Button>
+          </div>
+        </div>
+
+        {/* Updates List */}
+        <div className="space-y-4">
+          {updates.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">No updates yet</p>
+          ) : (
+            updates.map((update) => (
+              <div key={update._id.toString()} className="border-l-4 border-muted pl-4">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="font-medium">{update.createdByName}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatDistanceToNow(new Date(update.createdAt), { addSuffix: true })}
+                    </p>
+                  </div>
+                  <Badge variant="outline" className="text-xs">
+                    {update.updateType.replace(/_/g, ' ')}
+                  </Badge>
+                </div>
+                <p className="text-sm mt-2 whitespace-pre-wrap">
+                  {update.message}
+                </p>
+              </div>
+            ))
+          )}
+        </div>
+      </Card>
+    )
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (error || !ticket) {
+    return (
+      <div className="p-6">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error || 'Ticket not found'}</AlertDescription>
+        </Alert>
+      </div>
+    )
+  }
+
+  const activityTimeline = buildActivityTimeline({
+    ticket,
+    comments,
+    includeCreation: true,
+    includeUpdates: true,
+  })
+  const cannedResponseVars = buildCannedResponseVariables(ticket, session)
+
+  return (
+    <div className="p-6 space-y-6">
+      {/* Enhanced Header */}
+      <TicketHeader
+        ticket={ticket}
+        onTitleSave={handleTitleSave}
+        onStatusChange={handleStatusChange}
+        onPriorityChange={handlePriorityChange}
+        onAssignToMe={handleAssignToMe}
+        currentUserId={session?.user?.userId}
+      />
+
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {/* Tabbed Interface */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList>
+          <TabsTrigger value="overview" className="flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            Overview
+          </TabsTrigger>
+          <TabsTrigger value="activity" className="flex items-center gap-2">
+            <Activity className="h-4 w-4" />
+            Activity
+            <Badge variant="secondary" className="ml-1 text-xs">
+              {activityTimeline.length}
+            </Badge>
+          </TabsTrigger>
+          <TabsTrigger value="comments" className="flex items-center gap-2">
+            <MessageSquare className="h-4 w-4" />
+            Comments
+            <Badge variant="secondary" className="ml-1 text-xs">
+              {comments.length}
+            </Badge>
+          </TabsTrigger>
+          <TabsTrigger value="attachments" className="flex items-center gap-2">
+            <Paperclip className="h-4 w-4" />
+            Attachments
+            <Badge variant="secondary" className="ml-1 text-xs">
+              {ticket.attachments?.length || 0}
+            </Badge>
+          </TabsTrigger>
+          <TabsTrigger value="time" className="flex items-center gap-2">
+            <ClockIcon className="h-4 w-4" />
+            Time
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Overview Tab */}
+        <TabsContent value="overview" className="mt-6">
+          <div className="space-y-6">
+            {/* Service Catalog Card (if applicable) */}
+            {ticket.ticketType === 'service_request' && (
+              <ServiceCatalogCard metadata={ticket.metadata as ServiceRequestMetadata} />
+            )}
+
+            {/* SLA Tracking Card */}
+            {ticket.sla && (
+              <SLATrackingCard
+                sla={ticket.sla}
+                status={ticket.status}
+                createdAt={ticket.createdAt}
+              />
+            )}
+
+            {/* Two Column Layout */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Left Column: Ticket Details */}
+              <div className="lg:col-span-2 space-y-6">
+                <TicketDetailsCard
+                  ticket={ticket}
+                  onDescriptionSave={handleDescriptionSave}
+                  onAssigneeChange={handleAssigneeChange}
+                  users={users}
+                />
+
+                {/* Approval Actions */}
+                {renderApprovalActions()}
+
+                {/* Updates */}
+                {renderUpdatesSection()}
+              </div>
+
+              {/* Right Column: Type-Specific Sections */}
+              <div className="space-y-6">
+                <TypeSpecificSections ticket={ticket} />
+              </div>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* Activity Tab */}
+        <TabsContent value="activity" className="mt-6">
+          <Card className="p-6">
+            <h3 className="font-semibold text-lg mb-4">Activity Timeline</h3>
+            <ActivityTimeline events={activityTimeline} />
+          </Card>
+        </TabsContent>
+
+        {/* Comments Tab */}
+        <TabsContent value="comments" className="mt-6">
+          <Card className="p-6">
+            <h3 className="font-semibold text-lg mb-4">Comments</h3>
+            <EnhancedCommentSection
+              ticketId={ticket._id.toString()}
+              comments={comments}
+              onAddComment={handleAddComment}
+              onEditComment={handleEditComment}
+              onDeleteComment={handleDeleteComment}
+              cannedResponseVariables={cannedResponseVars}
+              currentUserId={session?.user?.userId}
+            />
+          </Card>
+        </TabsContent>
+
+        {/* Attachments Tab */}
+        <TabsContent value="attachments" className="mt-6">
+          <AttachmentsTab ticketId={ticket._id.toString()} />
+        </TabsContent>
+
+        {/* Time Tab */}
+        <TabsContent value="time" className="mt-6">
+          <TimeTrackingTab
+            ticketId={ticket._id.toString()}
+            currentUserId={session?.user?.userId}
+          />
+        </TabsContent>
+      </Tabs>
+    </div>
+  )
+}

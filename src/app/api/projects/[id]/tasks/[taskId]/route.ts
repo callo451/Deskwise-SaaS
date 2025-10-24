@@ -2,18 +2,37 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { ProjectService } from '@/lib/services/projects'
+import { ProjectPermissionService } from '@/lib/services/project-permissions'
+import { requirePermission } from '@/lib/middleware/permissions'
 import { z } from 'zod'
+
+// Schema for TaskDependency
+const taskDependencySchema = z.object({
+  taskId: z.string(),
+  type: z.enum(['finish_to_start', 'start_to_start', 'finish_to_finish', 'start_to_finish']),
+  lag: z.number().default(0),
+})
 
 const updateTaskSchema = z.object({
   title: z.string().optional(),
   description: z.string().optional(),
-  status: z.enum(['todo', 'in_progress', 'review', 'completed']).optional(),
+  status: z.enum(['backlog', 'todo', 'in_progress', 'blocked', 'review', 'completed', 'cancelled']).optional(),
   assignedTo: z.string().optional(),
   dueDate: z.string().optional(),
   completedAt: z.string().optional(),
-  dependencies: z.array(z.string()).optional(),
+  // Support both legacy string[] and new TaskDependency[] format
+  dependencies: z.union([
+    z.array(z.string()),
+    z.array(taskDependencySchema)
+  ]).optional(),
   estimatedHours: z.number().optional(),
   actualHours: z.number().optional(),
+  percentComplete: z.number().min(0).max(100).optional(),
+  plannedStartDate: z.string().optional(),
+  plannedEndDate: z.string().optional(),
+  actualStartDate: z.string().optional(),
+  remainingHours: z.number().optional(),
+  priority: z.enum(['low', 'medium', 'high', 'critical']).optional(),
 })
 
 export async function PUT(
@@ -31,6 +50,37 @@ export async function PUT(
     }
 
     const { id, taskId } = await params
+
+    // Fetch project first to verify it exists
+    const project = await ProjectService.getProjectById(id, session.user.orgId)
+
+    if (!project) {
+      return NextResponse.json(
+        { success: false, error: 'Project not found' },
+        { status: 404 }
+      )
+    }
+
+    // Fetch all tasks to get the specific task
+    const tasks = await ProjectService.getTasks(id)
+    const existingTask = tasks.find((t: any) => t._id?.toString() === taskId)
+
+    if (!existingTask) {
+      return NextResponse.json(
+        { success: false, error: 'Task not found' },
+        { status: 404 }
+      )
+    }
+
+    // Check task edit permission (context-aware)
+    const canEdit = await ProjectPermissionService.canEditTask(session, existingTask)
+    if (!canEdit) {
+      return NextResponse.json(
+        { success: false, error: 'Forbidden: You do not have permission to edit this task' },
+        { status: 403 }
+      )
+    }
+
     const body = await request.json()
     const validatedData = updateTaskSchema.parse(body)
 
@@ -41,6 +91,15 @@ export async function PUT(
     }
     if (updates.completedAt) {
       updates.completedAt = new Date(updates.completedAt)
+    }
+    if (updates.plannedStartDate) {
+      updates.plannedStartDate = new Date(updates.plannedStartDate)
+    }
+    if (updates.plannedEndDate) {
+      updates.plannedEndDate = new Date(updates.plannedEndDate)
+    }
+    if (updates.actualStartDate) {
+      updates.actualStartDate = new Date(updates.actualStartDate)
     }
 
     const task = await ProjectService.updateTask(
@@ -98,6 +157,26 @@ export async function DELETE(
     }
 
     const { id, taskId } = await params
+
+    // Verify project exists
+    const project = await ProjectService.getProjectById(id, session.user.orgId)
+
+    if (!project) {
+      return NextResponse.json(
+        { success: false, error: 'Project not found' },
+        { status: 404 }
+      )
+    }
+
+    // Check task delete permission
+    const canDelete = await requirePermission(session, 'projects.tasks.delete')
+    if (!canDelete) {
+      return NextResponse.json(
+        { success: false, error: 'Forbidden: You do not have permission to delete tasks' },
+        { status: 403 }
+      )
+    }
+
     const success = await ProjectService.deleteTask(
       taskId,
       id,

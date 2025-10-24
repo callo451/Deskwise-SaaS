@@ -19,6 +19,7 @@ import {
   Globe,
   MapPin,
 } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -167,17 +168,22 @@ export default function ClientsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="p-6 flex flex-col gap-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Clients</h1>
-          <p className="text-muted-foreground">
-            Manage your client relationships and accounts
-          </p>
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-blue-500/10 rounded-lg">
+            <Building2 className="h-6 w-6 text-blue-600" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold">Clients</h1>
+            <p className="text-muted-foreground text-base mt-1">
+              Manage your client relationships and accounts
+            </p>
+          </div>
         </div>
-        <Button onClick={() => router.push('/clients/new')}>
-          <Plus className="w-4 h-4 mr-2" />
+        <Button onClick={() => router.push('/clients/new')} size="lg" className="gap-2">
+          <Plus className="w-5 h-5" />
           Add Client
         </Button>
       </div>
@@ -185,67 +191,75 @@ export default function ClientsPage() {
       {/* Metrics Cards */}
       {metrics && (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Clients
-              </CardTitle>
-              <Users className="w-4 h-4 text-muted-foreground" />
+          <Card className="border-2 shadow-lg hover:shadow-xl transition-all hover:scale-105">
+            <CardHeader className="bg-gradient-to-r from-accent/50 to-accent/20 border-b-2 pb-3">
+              <div className="flex items-center justify-between">
+                <CardDescription className="text-sm font-medium">Total Clients</CardDescription>
+                <div className="p-1.5 bg-blue-500/10 rounded-md">
+                  <Users className="w-4 h-4 text-blue-600" />
+                </div>
+              </div>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{metrics.totalClients}</div>
-              <p className="text-xs text-muted-foreground mt-1">
+            <CardContent className="pt-4">
+              <div className="text-3xl font-bold">{metrics.totalClients}</div>
+              <p className="text-xs text-muted-foreground mt-2">
                 {metrics.activeClients} active
               </p>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Monthly Recurring Revenue
-              </CardTitle>
-              <TrendingUp className="w-4 h-4 text-muted-foreground" />
+          <Card className="border-2 shadow-lg hover:shadow-xl transition-all hover:scale-105">
+            <CardHeader className="border-b-2 border-dashed pb-3">
+              <div className="flex items-center justify-between">
+                <CardDescription className="text-sm font-medium">Monthly Revenue</CardDescription>
+                <div className="p-1.5 bg-green-500/10 rounded-md">
+                  <TrendingUp className="w-4 h-4 text-green-600" />
+                </div>
+              </div>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
+            <CardContent className="pt-4">
+              <div className="text-3xl font-bold">
                 {formatCurrency(metrics.totalMRR)}
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-2">
                 Per month
               </p>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Revenue
-              </CardTitle>
-              <DollarSign className="w-4 h-4 text-muted-foreground" />
+          <Card className="border-2 shadow-lg hover:shadow-xl transition-all hover:scale-105">
+            <CardHeader className="border-b-2 border-dashed pb-3">
+              <div className="flex items-center justify-between">
+                <CardDescription className="text-sm font-medium">Total Revenue</CardDescription>
+                <div className="p-1.5 bg-emerald-500/10 rounded-md">
+                  <DollarSign className="w-4 h-4 text-emerald-600" />
+                </div>
+              </div>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
+            <CardContent className="pt-4">
+              <div className="text-3xl font-bold">
                 {formatCurrency(metrics.totalRevenue)}
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-2">
                 All-time
               </p>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Average Health Score
-              </CardTitle>
-              <Heart className="w-4 h-4 text-muted-foreground" />
+          <Card className="border-2 shadow-lg hover:shadow-xl transition-all hover:scale-105">
+            <CardHeader className="border-b-2 border-dashed pb-3">
+              <div className="flex items-center justify-between">
+                <CardDescription className="text-sm font-medium">Avg Health Score</CardDescription>
+                <div className="p-1.5 bg-pink-500/10 rounded-md">
+                  <Heart className="w-4 h-4 text-pink-600" />
+                </div>
+              </div>
             </CardHeader>
-            <CardContent>
-              <div className={`text-2xl font-bold ${getHealthScoreColor(metrics.averageHealthScore)}`}>
+            <CardContent className="pt-4">
+              <div className={cn("text-3xl font-bold", getHealthScoreColor(metrics.averageHealthScore))}>
                 {Math.round(metrics.averageHealthScore)}
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-2">
                 Out of 100
               </p>
             </CardContent>
@@ -254,10 +268,10 @@ export default function ClientsPage() {
       )}
 
       {/* Search and Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Client List</CardTitle>
-          <CardDescription>
+      <Card className="border-2 shadow-lg">
+        <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10 border-b-2">
+          <CardTitle className="text-lg font-semibold">Client List</CardTitle>
+          <CardDescription className="text-sm mt-1">
             View and manage all your clients
           </CardDescription>
         </CardHeader>
@@ -318,7 +332,7 @@ export default function ClientsPage() {
               {clients.map((client) => (
                 <Card
                   key={client._id}
-                  className="hover:shadow-md transition-shadow cursor-pointer"
+                  className="border-2 shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer hover:scale-[1.02] hover:border-primary/30"
                   onClick={() => router.push(`/clients/${client._id}`)}
                 >
                   <CardContent className="p-6">

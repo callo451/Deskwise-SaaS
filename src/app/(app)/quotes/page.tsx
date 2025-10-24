@@ -39,6 +39,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
+import { cn } from '@/lib/utils'
 
 interface Quote {
   _id: string
@@ -180,17 +181,22 @@ export default function QuotesPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="p-6 flex flex-col gap-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Quotes</h1>
-          <p className="text-muted-foreground">
-            Create and manage client quotes and proposals
-          </p>
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-teal-500/10 rounded-lg">
+            <FileText className="h-6 w-6 text-teal-600" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold">Quotes</h1>
+            <p className="text-muted-foreground text-base mt-1">
+              Create and manage client quotes and proposals
+            </p>
+          </div>
         </div>
-        <Button onClick={() => router.push('/quotes/new')}>
-          <Plus className="w-4 h-4 mr-2" />
+        <Button size="lg" className="gap-2" onClick={() => router.push('/quotes/new')}>
+          <Plus className="w-5 h-5" />
           Create Quote
         </Button>
       </div>
@@ -198,67 +204,75 @@ export default function QuotesPage() {
       {/* Metrics Cards */}
       {metrics && (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Quotes
-              </CardTitle>
-              <FileText className="w-4 h-4 text-muted-foreground" />
+          <Card className="border-2 shadow-lg hover:shadow-xl transition-all hover:scale-105">
+            <CardHeader className="bg-gradient-to-r from-teal-500/10 to-teal-500/5 border-b-2 pb-3">
+              <div className="flex items-center justify-between">
+                <CardDescription className="text-sm font-medium">Total Quotes</CardDescription>
+                <div className="p-1.5 bg-teal-500/10 rounded-md">
+                  <FileText className="w-4 h-4 text-teal-600" />
+                </div>
+              </div>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{metrics.totalQuotes}</div>
-              <p className="text-xs text-muted-foreground mt-1">
+            <CardContent className="pt-4">
+              <div className="text-3xl font-bold">{metrics.totalQuotes}</div>
+              <p className="text-xs text-muted-foreground mt-2">
                 {metrics.sentQuotes} sent
               </p>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Acceptance Rate
-              </CardTitle>
-              <TrendingUp className="w-4 h-4 text-muted-foreground" />
+          <Card className="border-2 shadow-lg hover:shadow-xl transition-all hover:scale-105 border-blue-500/30 bg-blue-50/50 dark:bg-blue-950/20">
+            <CardHeader className="border-b-2 border-dashed pb-3">
+              <div className="flex items-center justify-between">
+                <CardDescription className="text-sm font-medium text-blue-700 dark:text-blue-400">Acceptance Rate</CardDescription>
+                <div className="p-1.5 bg-blue-500/20 rounded-md">
+                  <TrendingUp className="w-4 h-4 text-blue-600" />
+                </div>
+              </div>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
+            <CardContent className="pt-4">
+              <div className="text-3xl font-bold text-blue-600">
                 {metrics.acceptanceRate}%
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-2">
                 {metrics.acceptedQuotes} accepted
               </p>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Value
-              </CardTitle>
-              <DollarSign className="w-4 h-4 text-muted-foreground" />
+          <Card className="border-2 shadow-lg hover:shadow-xl transition-all hover:scale-105">
+            <CardHeader className="bg-gradient-to-r from-accent/50 to-accent/20 border-b-2 pb-3">
+              <div className="flex items-center justify-between">
+                <CardDescription className="text-sm font-medium">Total Value</CardDescription>
+                <div className="p-1.5 bg-emerald-500/10 rounded-md">
+                  <DollarSign className="w-4 h-4 text-emerald-600" />
+                </div>
+              </div>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
+            <CardContent className="pt-4">
+              <div className="text-3xl font-bold">
                 {formatCurrency(metrics.totalValue)}
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-2">
                 All quotes
               </p>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Accepted Value
-              </CardTitle>
-              <CheckCircle className="w-4 h-4 text-muted-foreground" />
+          <Card className="border-2 shadow-lg hover:shadow-xl transition-all hover:scale-105 border-green-500/30 bg-green-50/50 dark:bg-green-950/20">
+            <CardHeader className="border-b-2 border-dashed pb-3">
+              <div className="flex items-center justify-between">
+                <CardDescription className="text-sm font-medium text-green-700 dark:text-green-400">Accepted Value</CardDescription>
+                <div className="p-1.5 bg-green-500/20 rounded-md">
+                  <CheckCircle className="w-4 h-4 text-green-600" />
+                </div>
+              </div>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
+            <CardContent className="pt-4">
+              <div className="text-3xl font-bold text-green-600">
                 {formatCurrency(metrics.acceptedValue)}
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-2">
                 {metrics.convertedQuotes} converted
               </p>
             </CardContent>
@@ -267,10 +281,10 @@ export default function QuotesPage() {
       )}
 
       {/* Search and Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Quote List</CardTitle>
-          <CardDescription>
+      <Card className="border-2 shadow-lg">
+        <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10 border-b-2">
+          <CardTitle className="text-lg font-semibold">Quote List</CardTitle>
+          <CardDescription className="text-sm mt-1">
             View and manage all your quotes and proposals
           </CardDescription>
         </CardHeader>
@@ -338,7 +352,7 @@ export default function QuotesPage() {
                 return (
                   <Card
                     key={quote._id}
-                    className="hover:shadow-md transition-shadow cursor-pointer"
+                    className="border-2 shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer hover:scale-[1.02] hover:border-primary/30"
                     onClick={() => router.push(`/quotes/${quote._id}`)}
                   >
                     <CardContent className="p-6">

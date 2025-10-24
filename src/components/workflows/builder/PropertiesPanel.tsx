@@ -341,7 +341,7 @@ function TriggerConfig({ register, errors, setValue, watch }: any) {
           Trigger Type
         </Label>
         <Select
-          defaultValue={triggerType}
+          value={triggerType}
           onValueChange={(value) => setValue('type', value)}
         >
           <SelectTrigger className="mt-1.5 bg-white dark:bg-[#1e2536] border-gray-200 dark:border-white/10 text-gray-900 dark:text-white">
@@ -363,7 +363,7 @@ function TriggerConfig({ register, errors, setValue, watch }: any) {
               Module
             </Label>
             <Select
-              defaultValue={watch('module')}
+              value={watch('module')}
               onValueChange={(value) => setValue('module', value)}
             >
               <SelectTrigger className="mt-1.5 bg-white dark:bg-[#1e2536] border-gray-200 dark:border-white/10 text-gray-900 dark:text-white">
@@ -383,7 +383,7 @@ function TriggerConfig({ register, errors, setValue, watch }: any) {
               Event
             </Label>
             <Select
-              defaultValue={watch('event')}
+              value={watch('event')}
               onValueChange={(value) => setValue('event', value)}
             >
               <SelectTrigger className="mt-1.5 bg-white dark:bg-[#1e2536] border-gray-200 dark:border-white/10 text-gray-900 dark:text-white">
@@ -413,7 +413,7 @@ function ConditionConfig({ register, errors, setValue, watch }: any) {
           Logic Operator
         </Label>
         <Select
-          defaultValue={watch('logicOperator')}
+          value={watch('logicOperator')}
           onValueChange={(value) => setValue('logicOperator', value)}
         >
           <SelectTrigger className="mt-1.5 bg-white dark:bg-[#1e2536] border-gray-200 dark:border-white/10 text-gray-900 dark:text-white">
@@ -438,7 +438,7 @@ function ActionConfig({ register, errors, setValue, watch }: any) {
           Action Type
         </Label>
         <Select
-          defaultValue={watch('action')}
+          value={watch('action')}
           onValueChange={(value) => setValue('action', value)}
         >
           <SelectTrigger className="mt-1.5 bg-white dark:bg-[#1e2536] border-gray-200 dark:border-white/10 text-gray-900 dark:text-white">
@@ -457,7 +457,7 @@ function ActionConfig({ register, errors, setValue, watch }: any) {
           Module
         </Label>
         <Select
-          defaultValue={watch('module')}
+          value={watch('module')}
           onValueChange={(value) => setValue('module', value)}
         >
           <SelectTrigger className="mt-1.5 bg-white dark:bg-[#1e2536] border-gray-200 dark:border-white/10 text-gray-900 dark:text-white">
@@ -512,7 +512,7 @@ function NotificationConfig({ register, errors, setValue, watch }: any) {
       <div>
         <Label htmlFor="recipientType" className="text-gray-900 dark:text-white">Recipient Type</Label>
         <Select
-          defaultValue={watch('recipientType')}
+          value={watch('recipientType')}
           onValueChange={(value) => setValue('recipientType', value)}
         >
           <SelectTrigger className="mt-1.5 bg-white dark:bg-[#1e2536] border-gray-200 dark:border-white/10 text-gray-900 dark:text-white">
@@ -560,7 +560,7 @@ function NotificationConfig({ register, errors, setValue, watch }: any) {
       <div>
         <Label htmlFor="priority" className="text-gray-900 dark:text-white">Priority</Label>
         <Select
-          defaultValue={watch('priority')}
+          value={watch('priority')}
           onValueChange={(value) => setValue('priority', value)}
         >
           <SelectTrigger className="mt-1.5 bg-white dark:bg-[#1e2536] border-gray-200 dark:border-white/10 text-gray-900 dark:text-white">
@@ -587,7 +587,7 @@ function AssignmentConfig({ register, errors, setValue, watch }: any) {
       <div>
         <Label htmlFor="assignmentType" className="text-gray-900 dark:text-white">Assignment Type</Label>
         <Select
-          defaultValue={assignmentType}
+          value={assignmentType}
           onValueChange={(value) => setValue('assignmentType', value)}
         >
           <SelectTrigger className="mt-1.5 bg-white dark:bg-[#1e2536] border-gray-200 dark:border-white/10 text-gray-900 dark:text-white">
@@ -618,7 +618,7 @@ function AssignmentConfig({ register, errors, setValue, watch }: any) {
         <div>
           <Label htmlFor="group" className="text-gray-900 dark:text-white">Group</Label>
           <Select
-            defaultValue={watch('group')}
+            value={watch('group')}
             onValueChange={(value) => setValue('group', value)}
           >
             <SelectTrigger className="mt-1.5 bg-white dark:bg-[#1e2536] border-gray-200 dark:border-white/10 text-gray-900 dark:text-white">
@@ -637,7 +637,7 @@ function AssignmentConfig({ register, errors, setValue, watch }: any) {
       <div>
         <Label htmlFor="priority" className="text-gray-900 dark:text-white">Priority</Label>
         <Select
-          defaultValue={watch('priority')}
+          value={watch('priority')}
           onValueChange={(value) => setValue('priority', value)}
         >
           <SelectTrigger className="mt-1.5 bg-white dark:bg-[#1e2536] border-gray-200 dark:border-white/10 text-gray-900 dark:text-white">
@@ -723,7 +723,7 @@ function ApprovalConfig({ register, errors, setValue, watch }: any) {
       <div>
         <Label htmlFor="approvalType" className="text-gray-900 dark:text-white">Approval Type</Label>
         <Select
-          defaultValue={watch('approvalType')}
+          value={watch('approvalType')}
           onValueChange={(value) => setValue('approvalType', value)}
         >
           <SelectTrigger className="mt-1.5 bg-white dark:bg-[#1e2536] border-gray-200 dark:border-white/10 text-gray-900 dark:text-white">
@@ -781,7 +781,7 @@ function TransformConfig({ register, errors, setValue, watch }: any) {
       <div>
         <Label htmlFor="transformType" className="text-gray-900 dark:text-white">Transform Type</Label>
         <Select
-          defaultValue={watch('transformType')}
+          value={watch('transformType')}
           onValueChange={(value) => setValue('transformType', value)}
         >
           <SelectTrigger className="mt-1.5 bg-white dark:bg-[#1e2536] border-gray-200 dark:border-white/10 text-gray-900 dark:text-white">
@@ -820,7 +820,7 @@ function DelayConfig({ register, errors, setValue, watch }: any) {
       <div>
         <Label htmlFor="delayType" className="text-gray-900 dark:text-white">Delay Type</Label>
         <Select
-          defaultValue={delayType}
+          value={delayType}
           onValueChange={(value) => setValue('delayType', value)}
         >
           <SelectTrigger className="mt-1.5 bg-white dark:bg-[#1e2536] border-gray-200 dark:border-white/10 text-gray-900 dark:text-white">
@@ -850,7 +850,7 @@ function DelayConfig({ register, errors, setValue, watch }: any) {
           <div>
             <Label htmlFor="unit" className="text-gray-900 dark:text-white">Unit</Label>
             <Select
-              defaultValue={watch('unit')}
+              value={watch('unit')}
               onValueChange={(value) => setValue('unit', value)}
             >
               <SelectTrigger className="mt-1.5 bg-white dark:bg-[#1e2536] border-gray-200 dark:border-white/10 text-gray-900 dark:text-white">
@@ -903,7 +903,7 @@ function LoopConfig({ register, errors, setValue, watch }: any) {
       <div>
         <Label htmlFor="loopType" className="text-gray-900 dark:text-white">Loop Type</Label>
         <Select
-          defaultValue={loopType}
+          value={loopType}
           onValueChange={(value) => setValue('loopType', value)}
         >
           <SelectTrigger className="mt-1.5 bg-white dark:bg-[#1e2536] border-gray-200 dark:border-white/10 text-gray-900 dark:text-white">
@@ -966,7 +966,7 @@ function MergeConfig({ register, errors, setValue, watch }: any) {
       <div>
         <Label htmlFor="strategy" className="text-gray-900 dark:text-white">Merge Strategy</Label>
         <Select
-          defaultValue={watch('strategy')}
+          value={watch('strategy')}
           onValueChange={(value) => setValue('strategy', value)}
         >
           <SelectTrigger className="mt-1.5 bg-white dark:bg-[#1e2536] border-gray-200 dark:border-white/10 text-gray-900 dark:text-white">
@@ -1001,7 +1001,7 @@ function EndConfig({ register, errors, setValue, watch }: any) {
       <div>
         <Label htmlFor="endType" className="text-gray-900 dark:text-white">End Type</Label>
         <Select
-          defaultValue={watch('endType')}
+          value={watch('endType')}
           onValueChange={(value) => setValue('endType', value)}
         >
           <SelectTrigger className="mt-1.5 bg-white dark:bg-[#1e2536] border-gray-200 dark:border-white/10 text-gray-900 dark:text-white">

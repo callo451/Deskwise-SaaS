@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { QuoteService } from '@/lib/services/quotes'
 import { ClientService } from '@/lib/services/clients'
-import { OrganizationService } from '@/lib/services/organization'
+import { OrganizationService } from '@/lib/services/organizations'
 import { renderToStream } from '@react-pdf/renderer'
 import { QuotePDF } from '@/lib/pdf/quote-template'
 

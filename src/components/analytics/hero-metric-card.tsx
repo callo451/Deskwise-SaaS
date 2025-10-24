@@ -49,7 +49,7 @@ export function HeroMetricCard({
   }
 
   const content = (
-    <Card className={cn('overflow-hidden transition-all hover:shadow-md', className)}>
+    <Card className={cn('border-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 overflow-hidden', className)}>
       <CardContent className="p-6">
         <div className="flex items-start justify-between">
           <div className="flex-1">

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
+import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { UnifiedTicketService } from '@/lib/services/unified-tickets'
 import { requirePermission, createPermissionError } from '@/lib/middleware/permissions'
@@ -75,9 +75,9 @@ export async function POST(
       )
     }
 
-    // Check permission to add updates
+    // Check permission to add updates (unified ticketing permissions)
     const updatePermission =
-      ticket.ticketType === 'incident' ? 'incidents.edit' : 'problems.edit'
+      ticket.ticketType === 'incident' ? 'tickets.manageIncident' : 'tickets.manageProblem'
 
     const hasPermission = await requirePermission(session, updatePermission)
 

@@ -42,6 +42,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Progress } from '@/components/ui/progress'
+import { cn } from '@/lib/utils'
 
 interface Invoice {
   _id: string
@@ -198,21 +199,26 @@ export default function BillingPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="p-6 flex flex-col gap-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Billing & Invoices</h1>
-          <p className="text-muted-foreground">
-            Manage invoices, payments, and billing schedules
-          </p>
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-emerald-500/10 rounded-lg">
+            <DollarSign className="h-6 w-6 text-emerald-600" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold">Billing & Invoices</h1>
+            <p className="text-muted-foreground text-base mt-1">
+              Manage invoices, payments, and billing schedules
+            </p>
+          </div>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => router.push('/billing/recurring')}>
             Recurring Billing
           </Button>
-          <Button onClick={() => router.push('/billing/invoices/new')}>
-            <Plus className="w-4 h-4 mr-2" />
+          <Button size="lg" className="gap-2" onClick={() => router.push('/billing/invoices/new')}>
+            <Plus className="w-5 h-5" />
             Create Invoice
           </Button>
         </div>
@@ -221,72 +227,80 @@ export default function BillingPage() {
       {/* Metrics Cards */}
       {metrics && (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Revenue
-              </CardTitle>
-              <DollarSign className="w-4 h-4 text-muted-foreground" />
+          <Card className="border-2 shadow-lg hover:shadow-xl transition-all hover:scale-105">
+            <CardHeader className="bg-gradient-to-r from-emerald-500/10 to-emerald-500/5 border-b-2 pb-3">
+              <div className="flex items-center justify-between">
+                <CardDescription className="text-sm font-medium">Total Revenue</CardDescription>
+                <div className="p-1.5 bg-emerald-500/10 rounded-md">
+                  <DollarSign className="w-4 h-4 text-emerald-600" />
+                </div>
+              </div>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
+            <CardContent className="pt-4">
+              <div className="text-3xl font-bold">
                 {formatCurrency(metrics.totalRevenue)}
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-2">
                 {metrics.totalInvoices} invoices
               </p>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Collected
-              </CardTitle>
-              <CheckCircle className="w-4 h-4 text-muted-foreground" />
+          <Card className="border-2 shadow-lg hover:shadow-xl transition-all hover:scale-105 border-green-500/30 bg-green-50/50 dark:bg-green-950/20">
+            <CardHeader className="border-b-2 border-dashed pb-3">
+              <div className="flex items-center justify-between">
+                <CardDescription className="text-sm font-medium text-green-700 dark:text-green-400">Collected</CardDescription>
+                <div className="p-1.5 bg-green-500/20 rounded-md">
+                  <CheckCircle className="w-4 h-4 text-green-600" />
+                </div>
+              </div>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">
+            <CardContent className="pt-4">
+              <div className="text-3xl font-bold text-green-600">
                 {formatCurrency(metrics.totalPaid)}
               </div>
-              <div className="flex items-center gap-2 mt-1">
+              <div className="flex items-center gap-2 mt-2">
                 <Progress value={calculateCollectionRate()} className="flex-1 h-2" />
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs text-muted-foreground font-medium">
                   {calculateCollectionRate()}%
                 </span>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Outstanding
-              </CardTitle>
-              <Clock className="w-4 h-4 text-muted-foreground" />
+          <Card className="border-2 shadow-lg hover:shadow-xl transition-all hover:scale-105 border-yellow-500/30 bg-yellow-50/50 dark:bg-yellow-950/20">
+            <CardHeader className="border-b-2 border-dashed pb-3">
+              <div className="flex items-center justify-between">
+                <CardDescription className="text-sm font-medium text-yellow-700 dark:text-yellow-400">Outstanding</CardDescription>
+                <div className="p-1.5 bg-yellow-500/20 rounded-md">
+                  <Clock className="w-4 h-4 text-yellow-600" />
+                </div>
+              </div>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-yellow-600">
+            <CardContent className="pt-4">
+              <div className="text-3xl font-bold text-yellow-600">
                 {formatCurrency(metrics.totalOutstanding)}
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-2">
                 {metrics.sentInvoices + metrics.partialInvoices} unpaid
               </p>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Overdue
-              </CardTitle>
-              <AlertCircle className="w-4 h-4 text-muted-foreground" />
+          <Card className="border-2 shadow-lg hover:shadow-xl transition-all hover:scale-105 border-red-500/30 bg-red-50/50 dark:bg-red-950/20">
+            <CardHeader className="border-b-2 border-dashed pb-3">
+              <div className="flex items-center justify-between">
+                <CardDescription className="text-sm font-medium text-red-700 dark:text-red-400">Overdue</CardDescription>
+                <div className="p-1.5 bg-red-500/20 rounded-md">
+                  <AlertCircle className="w-4 h-4 text-red-600" />
+                </div>
+              </div>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-600">
+            <CardContent className="pt-4">
+              <div className="text-3xl font-bold text-red-600">
                 {metrics.overdueInvoices}
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-2">
                 Require attention
               </p>
             </CardContent>
@@ -296,10 +310,10 @@ export default function BillingPage() {
 
       {/* Aging Report Card */}
       {agingReport && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Accounts Receivable Aging</CardTitle>
-            <CardDescription>
+        <Card className="border-2 shadow-lg">
+          <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10 border-b-2">
+            <CardTitle className="text-lg font-semibold">Accounts Receivable Aging</CardTitle>
+            <CardDescription className="text-sm mt-1">
               Outstanding balances by age
             </CardDescription>
           </CardHeader>
@@ -331,10 +345,10 @@ export default function BillingPage() {
       )}
 
       {/* Invoices List */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Invoices</CardTitle>
-          <CardDescription>
+      <Card className="border-2 shadow-lg">
+        <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10 border-b-2">
+          <CardTitle className="text-lg font-semibold">Invoices</CardTitle>
+          <CardDescription className="text-sm mt-1">
             View and manage all your invoices
           </CardDescription>
         </CardHeader>
@@ -401,7 +415,7 @@ export default function BillingPage() {
                 return (
                   <Card
                     key={invoice._id}
-                    className="hover:shadow-md transition-shadow cursor-pointer"
+                    className="border-2 shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer hover:scale-[1.02] hover:border-primary/30"
                     onClick={() => router.push(`/billing/invoices/${invoice._id}`)}
                   >
                     <CardContent className="p-6">

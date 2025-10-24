@@ -31,8 +31,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Plus, Search, MoreVertical, Edit, Copy, Trash2, Power, PlayCircle, Clock, CheckCircle2, XCircle, Grid3x3, List } from 'lucide-react'
-import { formatRelativeTime } from '@/lib/utils'
+import { Plus, Search, MoreVertical, Edit, Copy, Trash2, Power, PlayCircle, Clock, CheckCircle2, XCircle, Grid3x3, List, Workflow as WorkflowIcon } from 'lucide-react'
+import { formatRelativeTime, cn } from '@/lib/utils'
 import { Workflow, WorkflowStatus } from '@/lib/types'
 import { useToast } from '@/hooks/use-toast'
 
@@ -238,22 +238,27 @@ export default function WorkflowsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 flex flex-col gap-6">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         className="flex items-center justify-between"
       >
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Workflows</h1>
-          <p className="text-muted-foreground">
-            Automate your ITSM processes with visual workflows
-          </p>
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-indigo-500/10 rounded-lg">
+            <WorkflowIcon className="h-6 w-6 text-indigo-600" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold">Workflows</h1>
+            <p className="text-muted-foreground text-base mt-1">
+              Automate your ITSM processes with visual workflows
+            </p>
+          </div>
         </div>
         <Link href="/workflows/new">
-          <Button size="lg">
-            <Plus className="w-4 h-4 mr-2" />
+          <Button size="lg" className="gap-2">
+            <Plus className="w-5 h-5" />
             New Workflow
           </Button>
         </Link>
@@ -266,28 +271,28 @@ export default function WorkflowsPage() {
         transition={{ delay: 0.1 }}
         className="grid grid-cols-2 md:grid-cols-4 gap-4"
       >
-        <Card>
+        <Card className="border-2 shadow-lg hover:shadow-xl transition-all hover:scale-105">
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold">{stats.total}</div>
-            <p className="text-xs text-muted-foreground mt-1">Total Workflows</p>
+            <div className="text-3xl font-bold">{stats.total}</div>
+            <p className="text-xs text-muted-foreground mt-2">Total Workflows</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border-2 shadow-lg hover:shadow-xl transition-all hover:scale-105 border-green-500/30 bg-green-50/50 dark:bg-green-950/20">
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-green-600">{stats.active}</div>
-            <p className="text-xs text-muted-foreground mt-1">Active</p>
+            <div className="text-3xl font-bold text-green-600">{stats.active}</div>
+            <p className="text-xs text-muted-foreground mt-2">Active</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border-2 shadow-lg hover:shadow-xl transition-all hover:scale-105 border-gray-500/30 bg-gray-50/50 dark:bg-gray-950/20">
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-gray-600">{stats.draft}</div>
-            <p className="text-xs text-muted-foreground mt-1">Draft</p>
+            <div className="text-3xl font-bold text-gray-600">{stats.draft}</div>
+            <p className="text-xs text-muted-foreground mt-2">Draft</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border-2 shadow-lg hover:shadow-xl transition-all hover:scale-105 border-blue-500/30 bg-blue-50/50 dark:bg-blue-950/20">
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-blue-600">{stats.executionsToday}</div>
-            <p className="text-xs text-muted-foreground mt-1">Executions (Total)</p>
+            <div className="text-3xl font-bold text-blue-600">{stats.executionsToday}</div>
+            <p className="text-xs text-muted-foreground mt-2">Executions (Total)</p>
           </CardContent>
         </Card>
       </motion.div>
@@ -298,9 +303,9 @@ export default function WorkflowsPage() {
         animate={{ opacity: 1 }}
         transition={{ delay: 0.2 }}
       >
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Filters</CardTitle>
+        <Card className="border-2 shadow-lg">
+          <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10 border-b-2">
+            <CardTitle className="text-lg font-semibold">Filters</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
@@ -407,7 +412,7 @@ export default function WorkflowsPage() {
           >
             {workflows.map((workflow) => (
               <motion.div key={workflow._id.toString()} variants={item}>
-                <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
+                <Card className="border-2 shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer hover:scale-[1.02] hover:border-primary/30 h-full">
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="flex-1">

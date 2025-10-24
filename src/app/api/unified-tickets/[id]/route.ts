@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
+import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { UnifiedTicketService } from '@/lib/services/unified-tickets'
-import { requirePermission, createPermissionError } from '@/lib/middleware/permissions'
+import { requirePermission, requireAnyPermission, createPermissionError, createMultiplePermissionError } from '@/lib/middleware/permissions'
 import { NotificationEngine } from '@/lib/services/notification-engine'
 import { NotificationEvent } from '@/lib/types'
 
@@ -27,21 +27,13 @@ export async function GET(
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 })
     }
 
-    // Check type-specific view permission
-    const typePermissions: Record<string, string> = {
-      ticket: 'tickets.view',
-      incident: 'incidents.view',
-      service_request: 'service_requests.view',
-      change: 'changes.view',
-      problem: 'problems.view',
-    }
-
-    const permission = typePermissions[ticket.ticketType] || 'tickets.view'
-    const hasPermission = await requirePermission(session, permission)
+    // Check unified tickets view permission (all ticket types use tickets.view.all or tickets.view.own)
+    // Type-specific permissions (createIncident, manageIncident, etc.) are for actions only
+    const hasPermission = await requireAnyPermission(session, ['tickets.view.all', 'tickets.view.own'])
 
     if (!hasPermission) {
       return NextResponse.json(
-        { error: createPermissionError(permission) },
+        { error: createMultiplePermissionError(['tickets.view.all', 'tickets.view.own'], false) },
         { status: 403 }
       )
     }
@@ -77,21 +69,12 @@ export async function PUT(
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 })
     }
 
-    // Check type-specific edit permission
-    const typePermissions: Record<string, string> = {
-      ticket: 'tickets.edit',
-      incident: 'incidents.edit',
-      service_request: 'service_requests.edit',
-      change: 'changes.edit',
-      problem: 'problems.edit',
-    }
-
-    const permission = typePermissions[ticket.ticketType] || 'tickets.edit'
-    const hasPermission = await requirePermission(session, permission)
+    // Check unified tickets edit permission (all ticket types use tickets.edit.all or tickets.edit.own)
+    const hasPermission = await requireAnyPermission(session, ['tickets.edit.all', 'tickets.edit.own'])
 
     if (!hasPermission) {
       return NextResponse.json(
-        { error: createPermissionError(permission) },
+        { error: createMultiplePermissionError(['tickets.edit.all', 'tickets.edit.own'], false) },
         { status: 403 }
       )
     }
@@ -166,21 +149,12 @@ export async function DELETE(
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 })
     }
 
-    // Check type-specific delete permission
-    const typePermissions: Record<string, string> = {
-      ticket: 'tickets.delete',
-      incident: 'incidents.delete',
-      service_request: 'service_requests.delete',
-      change: 'changes.delete',
-      problem: 'problems.delete',
-    }
-
-    const permission = typePermissions[ticket.ticketType] || 'tickets.delete'
-    const hasPermission = await requirePermission(session, permission)
+    // Check unified tickets delete permission (all ticket types use tickets.delete)
+    const hasPermission = await requirePermission(session, 'tickets.delete')
 
     if (!hasPermission) {
       return NextResponse.json(
-        { error: createPermissionError(permission) },
+        { error: createPermissionError('tickets.delete') },
         { status: 403 }
       )
     }

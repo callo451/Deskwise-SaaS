@@ -36,6 +36,8 @@ import {
   Workflow,
   ChevronDown,
   ChevronRight,
+  UserCog,
+  Briefcase,
 } from 'lucide-react'
 
 // Navigation structure organized by service management categories
@@ -72,20 +74,28 @@ const navigationCategories: NavigationCategory[] = [
     ],
   },
   {
-    name: 'Operations',
+    name: 'Projects',
     icon: Wrench,
     items: [
-      { name: 'Projects', href: '/projects', icon: FolderKanban },
+      {
+        name: 'Projects',
+        icon: FolderKanban,
+        subItems: [
+          { name: 'Projects', href: '/projects', icon: FolderKanban },
+          { name: 'Resources', href: '/resources', icon: UserCog },
+          { name: 'Portfolio', href: '/portfolio', icon: Briefcase },
+        ],
+      },
       { name: 'Scheduling', href: '/scheduling', icon: Calendar },
       { name: 'Workflows', href: '/workflows', icon: Workflow },
       {
         name: 'Analytics',
         icon: BarChart3,
         subItems: [
-          { name: 'Overview', href: '/analytics', icon: BarChart3 },
+          { name: 'Overview', href: '/analytics/overview', icon: BarChart3 },
           { name: 'Service Desk', href: '/analytics/tickets', icon: Ticket },
           { name: 'Incidents', href: '/analytics/incidents', icon: AlertCircle },
-          { name: 'Operations', href: '/analytics/projects', icon: FolderKanban },
+          { name: 'Projects', href: '/analytics/projects', icon: FolderKanban },
           { name: 'Assets', href: '/analytics/assets', icon: HardDrive },
           { name: 'SLA Performance', href: '/analytics/sla', icon: FileText },
           { name: 'Reports', href: '/analytics/reports/library', icon: FileText },
