@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { InvoiceService } from '@/lib/services/invoices'
 import { ClientService } from '@/lib/services/clients'
 import { OrganizationService } from '@/lib/services/organizations'
+import { BrandingService } from '@/lib/services/branding'
 import { EmailSettingsService } from '@/lib/services/email-settings'
 import { EmailService } from '@/lib/services/email-service'
 import { renderToBuffer } from '@react-pdf/renderer'
@@ -59,6 +60,9 @@ export async function POST(
     // Fetch organization
     const organization = await OrganizationService.getOrganizationById(orgId)
 
+    // Fetch branding configuration
+    const branding = await BrandingService.getBranding(orgId)
+
     // Get email settings for this organization
     const emailSettings = await EmailSettingsService.getSettings(orgId)
 
@@ -85,7 +89,7 @@ export async function POST(
       })
     }
 
-    // Prepare email template data
+    // Prepare email template data with branding
     const emailData = {
       clientName: client.name,
       invoiceNumber: invoice.invoiceNumber,
@@ -100,12 +104,13 @@ export async function POST(
       organizationPhone: organization?.phone,
       isPaid: invoice.status === 'paid',
       isPartial: invoice.status === 'partial',
+      branding, // Include branding configuration
     }
 
     // Initialize email service
     const emailService = new EmailService(emailSettings)
 
-    // Send email using existing EmailService
+    // Send email using existing EmailService with branding
     // Note: PDF attachments require SendRawEmailCommand - will be added in future update
     const emailResult = await emailService.sendEmail(
       primaryContact.email,

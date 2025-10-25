@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { InvoiceService } from '@/lib/services/invoices'
 import { ClientService } from '@/lib/services/clients'
 import { OrganizationService } from '@/lib/services/organizations'
+import { BrandingService } from '@/lib/services/branding'
 import { renderToStream } from '@react-pdf/renderer'
 import { InvoicePDF } from '@/lib/pdf/invoice-template'
 
@@ -41,9 +42,12 @@ export async function GET(
     // Fetch organization
     const organization = await OrganizationService.getOrganizationById(orgId)
 
-    // Generate PDF
+    // Fetch branding configuration
+    const branding = await BrandingService.getBranding(orgId)
+
+    // Generate PDF with branding
     const stream = await renderToStream(
-      InvoicePDF({ invoice, client, organization })
+      InvoicePDF({ invoice, client, organization, branding })
     )
 
     // Convert stream to buffer

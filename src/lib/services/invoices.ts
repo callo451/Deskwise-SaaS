@@ -352,6 +352,24 @@ export class InvoiceService {
   }
 
   /**
+   * Update invoice status
+   */
+  static async updateInvoiceStatus(id: string, orgId: string, status: string) {
+    const client = await clientPromise
+    const db = client.db('deskwise')
+
+    await db.collection('invoices').updateOne(
+      { _id: new ObjectId(id), orgId },
+      {
+        $set: {
+          status,
+          updatedAt: new Date(),
+        },
+      }
+    )
+  }
+
+  /**
    * Create invoice from quote
    */
   static async createFromQuote(

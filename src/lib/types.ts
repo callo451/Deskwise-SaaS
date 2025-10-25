@@ -43,6 +43,54 @@ export interface Organization {
   timezone: string
   currency: string
   mode: 'msp' | 'internal' // MSP mode or Internal IT mode
+
+  // Contact Information
+  email?: string
+  phone?: string
+  website?: string
+
+  // Business Address
+  address?: {
+    street: string
+    city: string
+    state: string
+    postalCode: string
+    country: string
+  }
+
+  // Legal & Tax Information
+  taxId?: string // EIN, VAT, ABN, ACN, etc.
+  registrationNumber?: string // Company registration number
+  taxIdLabel?: string // Custom label like "EIN", "VAT Number", "ABN", etc.
+
+  // Banking & Payment Information
+  paymentInstructions?: {
+    bankName?: string
+    accountName?: string
+    accountNumber?: string // Last 4 digits only for display
+    routingNumber?: string
+    swiftCode?: string
+    iban?: string
+    bsb?: string // For Australian banks
+    paymentMethods?: ('bank_transfer' | 'credit_card' | 'check' | 'paypal' | 'stripe' | 'other')[]
+    onlinePaymentUrl?: string // Link to payment portal
+    additionalInstructions?: string
+  }
+
+  // Invoice Defaults
+  invoiceDefaults?: {
+    paymentTerms: number // Default NET days (e.g., 30 for NET 30)
+    defaultNotes?: string // Default notes on all invoices
+    footerText?: string // Footer text for invoices
+    termsAndConditions?: string // Default T&Cs
+    latePaymentFee?: {
+      enabled: boolean
+      type: 'percentage' | 'fixed'
+      value: number
+      gracePeriodDays?: number
+    }
+  }
+
   createdAt: Date
   updatedAt: Date
   settings: {
