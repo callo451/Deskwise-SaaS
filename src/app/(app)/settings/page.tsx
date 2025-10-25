@@ -2,7 +2,7 @@
 
 import { useSession } from 'next-auth/react'
 import { SettingsCard } from '@/components/settings/settings-card'
-import { Users, Building2, User, Bell, Package, MapPin, Tag, Sparkles, Globe, MessageSquare, Mail, FileText, Activity, Inbox, Webhook, Settings } from 'lucide-react'
+import { Users, Building2, User, Bell, Package, MapPin, Tag, Sparkles, Globe, MessageSquare, Mail, FileText, Activity, Inbox, Webhook, Settings, Palette } from 'lucide-react'
 import { Separator } from '@/components/ui/separator'
 
 export default function SettingsPage() {
@@ -17,6 +17,15 @@ export default function SettingsPage() {
       href: '/settings/users',
       iconColor: 'text-blue-600',
       hoverColor: 'hover:border-blue-500/50',
+      adminOnly: true,
+    },
+    {
+      title: 'Branding',
+      description: 'Customize logos, colors, typography, and white-label your platform',
+      icon: Palette,
+      href: '/settings/branding',
+      iconColor: 'text-pink-600',
+      hoverColor: 'hover:border-pink-500/50',
       adminOnly: true,
     },
     {

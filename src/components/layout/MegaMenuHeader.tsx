@@ -7,6 +7,7 @@ import { usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
 import { cn } from '@/lib/utils'
 import { useTheme } from '@/components/providers/theme-provider'
+import { useBranding } from '@/components/providers/BrandingProvider'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -259,6 +260,7 @@ const megaMenuSections: MegaMenuSection[] = [
 export function MegaMenuHeader() {
   const pathname = usePathname()
   const { theme, setTheme } = useTheme()
+  const { branding } = useBranding()
   const { data: session } = useSession()
   const [openMenu, setOpenMenu] = useState<string | null>(null)
   const [isScrolled, setIsScrolled] = useState(false)
@@ -311,17 +313,26 @@ export function MegaMenuHeader() {
 
   // Determine which logo to show
   const getLogoSrc = () => {
-    // During SSR or before mount, always return light logo
-    if (!mounted || typeof window === 'undefined') return '/deskwise_light.png'
+    // During SSR or before mount, check if custom branding exists
+    if (!mounted || typeof window === 'undefined') {
+      return branding?.logos?.primary?.light
+        ? `/api/branding/asset/${encodeURIComponent(branding.logos.primary.light)}`
+        : '/deskwise_light.png'
+    }
 
-    if (theme === 'dark') {
-      return '/deskwise_dark.png'
-    } else if (theme === 'light') {
-      return '/deskwise_light.png'
+    const isDarkMode = theme === 'dark' ||
+      (theme === 'system' && document.documentElement.classList.contains('dark'))
+
+    if (isDarkMode) {
+      return branding?.logos?.primary?.dark
+        ? `/api/branding/asset/${encodeURIComponent(branding.logos.primary.dark)}`
+        : (branding?.logos?.primary?.light
+            ? `/api/branding/asset/${encodeURIComponent(branding.logos.primary.light)}`
+            : '/deskwise_dark.png')
     } else {
-      // For system theme, check the actual applied class
-      const isDark = document.documentElement.classList.contains('dark')
-      return isDark ? '/deskwise_dark.png' : '/deskwise_light.png'
+      return branding?.logos?.primary?.light
+        ? `/api/branding/asset/${encodeURIComponent(branding.logos.primary.light)}`
+        : '/deskwise_light.png'
     }
   }
 
@@ -353,17 +364,23 @@ export function MegaMenuHeader() {
 
             {/* Logo & Brand */}
             <Link href="/dashboard" className="flex items-center gap-3 group flex-shrink-0">
-              <div
-                style={{
-                  height: '32px',
-                  width: '140px',
-                  backgroundImage: `url(${getLogoSrc()})`,
-                  backgroundSize: 'contain',
-                  backgroundRepeat: 'no-repeat',
-                  backgroundPosition: 'center'
-                }}
-                className="transition-transform group-hover:scale-105"
-              />
+              {(branding?.logos?.primary?.light || branding?.logos?.primary?.dark) ? (
+                <div
+                  style={{
+                    height: '32px',
+                    width: '140px',
+                    backgroundImage: `url(${getLogoSrc()})`,
+                    backgroundSize: 'contain',
+                    backgroundRepeat: 'no-repeat',
+                    backgroundPosition: 'center'
+                  }}
+                  className="transition-transform group-hover:scale-105"
+                />
+              ) : (
+                <span className="text-xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+                  {branding?.identity?.companyName || 'Deskwise'}
+                </span>
+              )}
             </Link>
 
             {/* Navigation */}
