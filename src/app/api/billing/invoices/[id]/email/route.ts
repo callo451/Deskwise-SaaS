@@ -13,6 +13,7 @@ import {
   getInvoiceEmailTemplate,
   getInvoiceEmailSubject,
 } from '@/lib/email/invoice-email-template'
+import { generateInvoiceQRCode } from '@/lib/utils/qr-generator'
 
 export async function POST(
   request: NextRequest,
@@ -107,18 +108,46 @@ export async function POST(
       branding, // Include branding configuration
     }
 
+    // Generate QR code for payment (only for unpaid invoices)
+    let qrCodeDataUrl: string | undefined
+    if (invoice.status !== 'paid') {
+      qrCodeDataUrl = await generateInvoiceQRCode({
+        invoiceNumber: invoice.invoiceNumber,
+        amount: invoice.amountDue || invoice.total,
+        currency: invoice.currency || 'USD',
+        dueDate: new Date(invoice.dueDate).toISOString(),
+        paymentUrl: organization?.paymentInstructions?.onlinePaymentUrl,
+        organizationName: organization?.name,
+      })
+    }
+
+    // Generate PDF for attachment with QR code
+    const pdfBuffer = await renderToBuffer(
+      InvoicePDF({ invoice, client, organization, branding, qrCodeDataUrl })
+    )
+
     // Initialize email service
     const emailService = new EmailService(emailSettings)
 
-    // Send email using existing EmailService with branding
-    // Note: PDF attachments require SendRawEmailCommand - will be added in future update
+    // Send email with PDF attachment
     const emailResult = await emailService.sendEmail(
       primaryContact.email,
       getInvoiceEmailSubject(
         invoice.invoiceNumber,
         invoice.status === 'paid'
       ),
-      getInvoiceEmailTemplate(emailData)
+      getInvoiceEmailTemplate(emailData),
+      undefined, // textBody
+      undefined, // cc
+      undefined, // bcc
+      organization?.email, // replyTo
+      [ // attachments
+        {
+          filename: `Invoice-${invoice.invoiceNumber}.pdf`,
+          content: pdfBuffer,
+          contentType: 'application/pdf',
+        },
+      ]
     )
 
     if (!emailResult.messageId) {

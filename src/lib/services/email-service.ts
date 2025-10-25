@@ -1,6 +1,7 @@
 import {
   SESClient,
   SendEmailCommand,
+  SendRawEmailCommand,
   GetIdentityVerificationAttributesCommand,
   type SendEmailCommandInput
 } from '@aws-sdk/client-ses'
@@ -8,6 +9,13 @@ import nodemailer from 'nodemailer'
 import type { Transporter } from 'nodemailer'
 import { EmailSettings } from '@/lib/types'
 import { decryptCredentials } from '@/lib/utils/email-encryption'
+
+export interface EmailAttachment {
+  filename: string
+  content: Buffer | string
+  contentType?: string
+  encoding?: string
+}
 
 /**
  * Unified Email Service
@@ -98,7 +106,8 @@ export class EmailService {
     textBody?: string,
     cc?: string[],
     bcc?: string[],
-    replyTo?: string
+    replyTo?: string,
+    attachments?: EmailAttachment[]
   ): Promise<{ messageId: string; response: any }> {
     // Validate inputs
     const toAddresses = Array.isArray(to) ? to : [to]
@@ -117,9 +126,9 @@ export class EmailService {
 
     // Route to correct provider
     if (this.provider === 'platform') {
-      return await this.sendViaSES(toAddresses, subject, htmlBody, textBody, cc, bcc, replyTo)
+      return await this.sendViaSES(toAddresses, subject, htmlBody, textBody, cc, bcc, replyTo, attachments)
     } else {
-      return await this.sendViaSMTP(toAddresses, subject, htmlBody, textBody, cc, bcc, replyTo)
+      return await this.sendViaSMTP(toAddresses, subject, htmlBody, textBody, cc, bcc, replyTo, attachments)
     }
   }
 
@@ -133,7 +142,8 @@ export class EmailService {
     textBody?: string,
     cc?: string[],
     bcc?: string[],
-    replyTo?: string
+    replyTo?: string,
+    attachments?: EmailAttachment[]
   ): Promise<{ messageId: string; response: any }> {
     if (!this.sesClient) {
       throw new Error('AWS SES client not initialized')
@@ -143,6 +153,11 @@ export class EmailService {
       // Get platform from email from env or use settings
       const fromEmail = process.env.AWS_SES_FROM_EMAIL || this.settings.fromEmail
       const fromName = process.env.AWS_SES_FROM_NAME || this.settings.fromName
+
+      // If attachments are present, use SendRawEmailCommand
+      if (attachments && attachments.length > 0) {
+        return await this.sendViaSESRaw(to, subject, htmlBody, textBody, cc, bcc, replyTo, attachments, fromEmail, fromName)
+      }
 
       const params: SendEmailCommandInput = {
         Source: `${fromName} <${fromEmail}>`,
@@ -202,6 +217,98 @@ export class EmailService {
   }
 
   /**
+   * Send email via AWS SES using raw MIME format (for attachments)
+   */
+  private async sendViaSESRaw(
+    to: string[],
+    subject: string,
+    htmlBody: string,
+    textBody: string | undefined,
+    cc: string[] | undefined,
+    bcc: string[] | undefined,
+    replyTo: string | undefined,
+    attachments: EmailAttachment[],
+    fromEmail: string,
+    fromName: string
+  ): Promise<{ messageId: string; response: any }> {
+    if (!this.sesClient) {
+      throw new Error('AWS SES client not initialized')
+    }
+
+    try {
+      // Generate boundary strings for MIME parts
+      const boundaryMixed = `----=_Part_Mixed_${Date.now()}_${Math.random().toString(36).substring(7)}`
+      const boundaryAlt = `----=_Part_Alt_${Date.now()}_${Math.random().toString(36).substring(7)}`
+
+      // Build email headers
+      let rawMessage = `From: ${fromName} <${fromEmail}>\n`
+      rawMessage += `To: ${to.join(', ')}\n`
+      if (cc && cc.length > 0) rawMessage += `Cc: ${cc.join(', ')}\n`
+      if (bcc && bcc.length > 0) rawMessage += `Bcc: ${bcc.join(', ')}\n`
+      if (replyTo) rawMessage += `Reply-To: ${replyTo}\n`
+      rawMessage += `Subject: ${subject}\n`
+      rawMessage += `MIME-Version: 1.0\n`
+      rawMessage += `Content-Type: multipart/mixed; boundary="${boundaryMixed}"\n\n`
+
+      // Start mixed part (for text/html + attachments)
+      rawMessage += `--${boundaryMixed}\n`
+      rawMessage += `Content-Type: multipart/alternative; boundary="${boundaryAlt}"\n\n`
+
+      // Text part
+      if (textBody) {
+        rawMessage += `--${boundaryAlt}\n`
+        rawMessage += `Content-Type: text/plain; charset=UTF-8\n`
+        rawMessage += `Content-Transfer-Encoding: 7bit\n\n`
+        rawMessage += `${textBody}\n\n`
+      }
+
+      // HTML part
+      rawMessage += `--${boundaryAlt}\n`
+      rawMessage += `Content-Type: text/html; charset=UTF-8\n`
+      rawMessage += `Content-Transfer-Encoding: 7bit\n\n`
+      rawMessage += `${htmlBody}\n\n`
+      rawMessage += `--${boundaryAlt}--\n\n`
+
+      // Add attachments
+      for (const attachment of attachments) {
+        rawMessage += `--${boundaryMixed}\n`
+        rawMessage += `Content-Type: ${attachment.contentType || 'application/octet-stream'}; name="${attachment.filename}"\n`
+        rawMessage += `Content-Transfer-Encoding: base64\n`
+        rawMessage += `Content-Disposition: attachment; filename="${attachment.filename}"\n\n`
+
+        // Convert content to base64
+        const base64Content = Buffer.isBuffer(attachment.content)
+          ? attachment.content.toString('base64')
+          : Buffer.from(attachment.content).toString('base64')
+
+        // Split into 76-character lines (MIME requirement)
+        const lines = base64Content.match(/.{1,76}/g) || []
+        rawMessage += lines.join('\n') + '\n\n'
+      }
+
+      // End message
+      rawMessage += `--${boundaryMixed}--`
+
+      // Send via SES
+      const command = new SendRawEmailCommand({
+        RawMessage: {
+          Data: Buffer.from(rawMessage),
+        },
+      })
+
+      const response = await this.sesClient.send(command)
+
+      return {
+        messageId: response.MessageId || '',
+        response,
+      }
+    } catch (error: any) {
+      console.error('SES raw send error:', error)
+      throw new Error(error.message || 'Failed to send email with attachments via AWS SES')
+    }
+  }
+
+  /**
    * Send email via SMTP
    */
   private async sendViaSMTP(
@@ -211,14 +318,15 @@ export class EmailService {
     textBody?: string,
     cc?: string[],
     bcc?: string[],
-    replyTo?: string
+    replyTo?: string,
+    attachments?: EmailAttachment[]
   ): Promise<{ messageId: string; response: any }> {
     if (!this.smtpTransporter) {
       throw new Error('SMTP transporter not initialized')
     }
 
     try {
-      const mailOptions = {
+      const mailOptions: any = {
         from: `${this.settings.fromName} <${this.settings.fromEmail}>`,
         to: to.join(', '),
         ...(cc && cc.length > 0 && { cc: cc.join(', ') }),
@@ -227,6 +335,16 @@ export class EmailService {
         subject,
         html: htmlBody,
         ...(textBody && { text: textBody }),
+      }
+
+      // Add attachments if present
+      if (attachments && attachments.length > 0) {
+        mailOptions.attachments = attachments.map(att => ({
+          filename: att.filename,
+          content: att.content,
+          contentType: att.contentType || 'application/octet-stream',
+          encoding: att.encoding || 'base64',
+        }))
       }
 
       const info = await this.smtpTransporter.sendMail(mailOptions)

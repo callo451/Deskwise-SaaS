@@ -7,6 +7,7 @@ import { OrganizationService } from '@/lib/services/organizations'
 import { BrandingService } from '@/lib/services/branding'
 import { renderToStream } from '@react-pdf/renderer'
 import { InvoicePDF } from '@/lib/pdf/invoice-template'
+import { generateInvoiceQRCode } from '@/lib/utils/qr-generator'
 
 export async function GET(
   request: NextRequest,
@@ -45,9 +46,22 @@ export async function GET(
     // Fetch branding configuration
     const branding = await BrandingService.getBranding(orgId)
 
-    // Generate PDF with branding
+    // Generate QR code for payment (only for unpaid invoices)
+    let qrCodeDataUrl: string | undefined
+    if (invoice.status !== 'paid') {
+      qrCodeDataUrl = await generateInvoiceQRCode({
+        invoiceNumber: invoice.invoiceNumber,
+        amount: invoice.amountDue || invoice.total,
+        currency: invoice.currency || 'USD',
+        dueDate: new Date(invoice.dueDate).toISOString(),
+        paymentUrl: organization?.paymentInstructions?.onlinePaymentUrl,
+        organizationName: organization?.name,
+      })
+    }
+
+    // Generate PDF with branding and QR code
     const stream = await renderToStream(
-      InvoicePDF({ invoice, client, organization, branding })
+      InvoicePDF({ invoice, client, organization, branding, qrCodeDataUrl })
     )
 
     // Convert stream to buffer

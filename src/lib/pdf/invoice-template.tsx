@@ -14,13 +14,15 @@ interface InvoicePDFProps {
   client: any
   organization: any
   branding?: OrganizationBranding
+  qrCodeDataUrl?: string
 }
 
 export const InvoicePDF: React.FC<InvoicePDFProps> = ({
   invoice,
   client,
   organization,
-  branding
+  branding,
+  qrCodeDataUrl
 }) => {
   // Helper function to convert HSL to hex for PDF rendering
   const hslToHex = (h: number, s: number, l: number): string => {
@@ -237,6 +239,23 @@ export const InvoicePDF: React.FC<InvoicePDFProps> = ({
       lineHeight: 1.5,
       color: '#4b5563',
       marginBottom: 4,
+    },
+    qrCodeContainer: {
+      marginTop: 12,
+      alignItems: 'center',
+      paddingTop: 12,
+      borderTopWidth: 1,
+      borderTopColor: '#e5e7eb',
+    },
+    qrCode: {
+      width: 120,
+      height: 120,
+      marginBottom: 6,
+    },
+    qrCodeLabel: {
+      fontSize: 8,
+      color: '#6b7280',
+      textAlign: 'center',
     },
     termsSection: {
       marginTop: 30,
@@ -612,6 +631,16 @@ export const InvoicePDF: React.FC<InvoicePDFProps> = ({
               <Text style={styles.paymentInstructionsText}>
                 {organization.paymentInstructions.additionalInstructions}
               </Text>
+            )}
+
+            {/* QR Code for Payment */}
+            {qrCodeDataUrl && (
+              <View style={styles.qrCodeContainer}>
+                <Image src={qrCodeDataUrl} style={styles.qrCode} />
+                <Text style={styles.qrCodeLabel}>
+                  Scan to view payment details
+                </Text>
+              </View>
             )}
           </View>
         )}
