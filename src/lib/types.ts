@@ -50,6 +50,129 @@ export interface Organization {
     enableAI?: boolean
     allowPublicKB?: boolean
   }
+  branding?: OrganizationBranding // White-label branding configuration
+}
+
+// ============================================
+// White-Label Branding
+// ============================================
+
+export interface OrganizationBranding {
+  // Logos and Icons
+  logos: {
+    primary: {
+      light?: string // S3 key for light mode logo
+      dark?: string // S3 key for dark mode logo
+    }
+    favicon?: string // S3 key for favicon
+    loginScreen?: string // S3 key for login screen logo
+  }
+
+  // Color Palette (HSL format for CSS variables)
+  colors: {
+    primary: {
+      h: number // Hue (0-360)
+      s: number // Saturation (0-100)
+      l: number // Lightness (0-100)
+    }
+    secondary: {
+      h: number
+      s: number
+      l: number
+    }
+    accent: {
+      h: number
+      s: number
+      l: number
+    }
+    background?: {
+      h: number
+      s: number
+      l: number
+    }
+    surface?: {
+      h: number
+      s: number
+      l: number
+    }
+  }
+
+  // Typography
+  typography: {
+    fontFamily: string // e.g., 'Inter', 'Roboto', 'Custom Font'
+    googleFontsUrl?: string // Google Fonts embed URL
+    headingFontFamily?: string // Optional separate font for headings
+  }
+
+  // Brand Identity
+  identity: {
+    companyName: string // Brand name for display
+    tagline?: string // Optional company tagline
+    customDomain?: string // Custom domain (e.g., support.acme.com)
+    subdomain?: string // Subdomain on Deskwise (e.g., acme.deskwise.net)
+  }
+
+  // Email and Notification Branding
+  email: {
+    fromName: string // "from" name in emails
+    replyToEmail?: string // Reply-to address
+    footerText?: string // Custom footer text
+    logoUrl?: string // URL to logo for email (publicly accessible)
+    headerColor?: string // Hex color for email header
+  }
+
+  // Metadata
+  version: number // Version number for change tracking
+  isActive: boolean // Whether branding is active
+  lastModifiedBy?: string // User ID who last modified
+  lastModifiedAt?: Date // When last modified
+}
+
+// Branding Version History
+export interface BrandingVersion extends BaseEntity {
+  version: number
+  branding: OrganizationBranding
+  modifiedBy: string
+  modifiedByName: string
+  changeDescription?: string
+  isActive: boolean
+}
+
+// Branding configuration input (for API)
+export interface UpdateBrandingInput {
+  logos?: {
+    primary?: {
+      light?: string
+      dark?: string
+    }
+    favicon?: string
+    loginScreen?: string
+  }
+  colors?: {
+    primary?: { h: number; s: number; l: number }
+    secondary?: { h: number; s: number; l: number }
+    accent?: { h: number; s: number; l: number }
+    background?: { h: number; s: number; l: number }
+    surface?: { h: number; s: number; l: number }
+  }
+  typography?: {
+    fontFamily?: string
+    googleFontsUrl?: string
+    headingFontFamily?: string
+  }
+  identity?: {
+    companyName?: string
+    tagline?: string
+    customDomain?: string
+    subdomain?: string
+  }
+  email?: {
+    fromName?: string
+    replyToEmail?: string
+    footerText?: string
+    logoUrl?: string
+    headerColor?: string
+  }
 }
 
 // ============================================

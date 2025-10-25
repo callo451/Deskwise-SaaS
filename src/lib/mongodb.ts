@@ -129,6 +129,7 @@ export const COLLECTIONS = {
   EMAIL_QUEUE: 'email_queue',
   INBOUND_EMAIL_ACCOUNTS: 'inbound_email_accounts',
   PROCESSED_EMAILS: 'processed_emails',
+  BRANDING_VERSIONS: 'branding_versions',
 } as const
 
 export type CollectionName = typeof COLLECTIONS[keyof typeof COLLECTIONS]
